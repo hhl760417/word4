@@ -230,6 +230,19 @@
             height: 42px;
         }
 
+        .btn-clear-cache {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--error-color);
+            border: 1px dashed var(--error-color);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            height: 42px;
+        }
+
         .score-board {
             display: flex;
             justify-content: space-around;
@@ -399,13 +412,6 @@
         .example-en { font-weight: 500; color: var(--text-color); }
         .example-cn { color: var(--text-secondary); margin-top: 2px; }
 
-        .phrase-item {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            padding: 2px 0;
-        }
-
         summary {
             cursor: pointer;
             color: var(--sub-text);
@@ -529,6 +535,12 @@
                     <option value="5000">5 秒</option>
                 </select>
             </div>
+
+            <!-- 清除缓存 -->
+            <div class="control-group" style="margin-top: 6px;">
+                <label>系统数据管理：</label>
+                <button id="clearCacheBtn" class="btn-clear-cache">🗑️ 清除所有本地缓存</button>
+            </div>
         </div>
 
         <div class="modal-footer">
@@ -560,6 +572,7 @@
     let fullVocabulary = [];
     let vocabulary = [];
     let wrongWordsList = [];
+    let wordStatsMap = {}; // 记录每个单词正确答对次数的字典
     let isWrongMode = false;
 
     let currentWordObj = null;
@@ -592,6 +605,7 @@
     
     const loadWrongBtn = document.getElementById('loadWrongBtn');
     const clearWrongBtn = document.getElementById('clearWrongBtn');
+    const clearCacheBtn = document.getElementById('clearCacheBtn');
     const wrongCountBadge = document.getElementById('wrongCountBadge');
     const appTitle = document.getElementById('appTitle');
 
@@ -606,7 +620,7 @@
     const wrongCountEl = document.getElementById('wrongCount');
     const totalCountEl = document.getElementById('totalCount');
 
-    // 主题逻辑处理
+    // 1. 初始化及存储逻辑
     function initTheme() {
         const savedTheme = localStorage.getItem('app_theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -618,6 +632,19 @@
         document.documentElement.setAttribute('data-theme', selectedTheme);
         localStorage.setItem('app_theme', selectedTheme);
     });
+
+    function loadSavedWordStats() {
+        try {
+            const saved = localStorage.getItem('vocab_word_stats');
+            wordStatsMap = saved ? JSON.parse(saved) : {};
+        } catch (e) {
+            wordStatsMap = {};
+        }
+    }
+
+    function saveWordStats() {
+        localStorage.setItem('vocab_word_stats', JSON.stringify(wordStatsMap));
+    }
 
     function loadSavedWrongWords() {
         try {
@@ -647,6 +674,20 @@
     function updateWrongBadge() {
         wrongCountBadge.innerText = wrongWordsList.length;
     }
+
+    // 清除缓存
+    clearCacheBtn.addEventListener('click', () => {
+        if (confirm("确定要清除手机上的所有缓存数据吗？（包含答对记录、错题本及主题偏好）")) {
+            localStorage.clear();
+            wordStatsMap = {};
+            wrongWordsList = [];
+            initTheme();
+            updateWrongBadge();
+            alert("缓存已清空！词库将重新加载。");
+            modalOverlay.classList.remove('active');
+            loadVocabulary();
+        }
+    });
 
     openModalBtn.addEventListener('click', () => {
         updateWrongBadge();
@@ -699,7 +740,7 @@
             return;
         }
         isWrongMode = true;
-        vocabulary = [...wrongWordsList];
+        filterVocabulary();
         appTitle.innerText = "错题本练习";
         sequenceIndex = 0;
         stats = { correct: 0, wrong: 0, total: 0 };
@@ -715,7 +756,7 @@
             if (isWrongMode) {
                 isWrongMode = false;
                 appTitle.innerText = "快速背单词";
-                vocabulary = [...fullVocabulary];
+                filterVocabulary();
                 nextWord();
             }
         }
@@ -770,7 +811,7 @@
             if (!response.ok) throw new Error("网络错误");
             
             fullVocabulary = await response.json();
-            if (!isWrongMode) vocabulary = [...fullVocabulary];
+            filterVocabulary();
             
             sequenceIndex = 0;
             stats = { correct: 0, wrong: 0, total: 0 };
@@ -782,8 +823,24 @@
         }
     }
 
+    // 过滤词库：过滤掉答对已满 3 次的单词
+    function filterVocabulary() {
+        const source = isWrongMode ? wrongWordsList : fullVocabulary;
+        vocabulary = source.filter(item => {
+            const key = item.headWord || item.word;
+            return (wordStatsMap[key] || 0) < 3;
+        });
+    }
+
     function nextWord() {
-        if (!vocabulary || vocabulary.length < 4) return;
+        if (!vocabulary || vocabulary.length < 4) {
+            if (fullVocabulary.length > 0 && vocabulary.length < 4) {
+                wordText.innerText = "🎉 当前词库已被完全掌握！";
+                disableOptions(true);
+                return;
+            }
+            return;
+        }
         
         answered = false;
         isPaused = false;
@@ -794,7 +851,7 @@
 
         let targetIndex = 0;
         if (orderSelect.value === 'sequence') {
-            targetIndex = sequenceIndex;
+            targetIndex = sequenceIndex % vocabulary.length;
             sequenceIndex = (sequenceIndex + 1) % vocabulary.length;
         } else {
             targetIndex = Math.floor(Math.random() * vocabulary.length);
@@ -921,16 +978,7 @@
 
     function handleFastTimeout() {
         if (!answered && !isPaused) {
-            answered = true;
-            stats.wrong++;
-            stats.total++;
-            updateStatsUI();
-            addWordToWrongList(currentWordObj);
-
-            optionBtns[correctIndex].classList.add('correct');
-            disableOptions(true);
-
-            setTimeout(() => { if (!isPaused) nextWord(); }, 800);
+            checkAnswer(-1); // 传入 -1 标记超时答错
         }
     }
 
@@ -954,14 +1002,31 @@
         clearTimeout(autoTimer);
 
         stats.total++;
+        const wordKey = currentWordObj.headWord || currentWordObj.word;
 
         if (selectedIndex === correctIndex) {
             optionBtns[selectedIndex].classList.add('correct');
             stats.correct++;
+            
+            // 正确次数 +1
+            wordStatsMap[wordKey] = (wordStatsMap[wordKey] || 0) + 1;
+            saveWordStats();
+
+            // 如果满3次，将其从当前池子移除
+            if (wordStatsMap[wordKey] >= 3) {
+                filterVocabulary();
+            }
         } else {
-            optionBtns[selectedIndex].classList.add('wrong');
+            if (selectedIndex >= 0) {
+                optionBtns[selectedIndex].classList.add('wrong');
+            }
             optionBtns[correctIndex].classList.add('correct');
             stats.wrong++;
+            
+            // 答错重置计数
+            wordStatsMap[wordKey] = 0;
+            saveWordStats();
+            
             addWordToWrongList(currentWordObj);
         }
 
@@ -1037,6 +1102,7 @@
     }
 
     initTheme();
+    loadSavedWordStats();
     loadSavedWrongWords();
     fetchFileList();
 </script>
