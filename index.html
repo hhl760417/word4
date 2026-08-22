@@ -267,6 +267,14 @@
             margin: 2px 0;
         }
 
+        .group-info-row {
+            text-align: center;
+            font-size: 12px;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
         .score-item { text-align: center; }
         .score-total-dict { color: var(--primary-color); }
         .score-mastered { color: var(--success-color); }
@@ -461,6 +469,8 @@
 
     <!-- 统计看板 -->
     <div class="score-board">
+        <div class="group-info-row" id="groupInfoText">分组加载中...</div>
+        <div class="score-divider"></div>
         <div class="score-row">
             <div class="score-item">总词条: <span id="dictTotalCount" class="score-total-dict">0</span></div>
             <div class="score-item">已掌握: <span id="masteredCount" class="score-mastered">0</span></div>
@@ -515,6 +525,17 @@
                 <label for="fileSelect">选择词库文件：</label>
                 <select id="fileSelect">
                     <option value="">正在获取词库列表...</option>
+                </select>
+            </div>
+
+            <!-- 增加分组设置 -->
+            <div class="control-group">
+                <label for="groupSizeSelect">每组单词数量：</label>
+                <select id="groupSizeSelect">
+                    <option value="10">每组 10 个</option>
+                    <option value="20" selected>每组 20 个</option>
+                    <option value="50">每组 50 个</option>
+                    <option value="all">不分组（全部加载）</option>
                 </select>
             </div>
 
@@ -594,11 +615,15 @@
     const GITHUB_API_URL = "https://api.github.com/repos/hhl760417/english-vocabulary/contents/json_original/json-full";
     const CDN_BASE_URL = "https://cdn.jsdelivr.net/gh/hhl760417/english-vocabulary@master/json_original/json-full/";
 
-    let fullVocabulary = [];
-    let vocabulary = [];
+    let fullVocabulary = []; // 当前整套词库
+    let currentGroupList = []; // 当前分组内全部词条
+    let vocabulary = []; // 当前分组内未掌握（未满3次）词条
     let wrongWordsList = [];
-    let wordStatsMap = {}; // 记录各个单词连续答对次数
+    let wordStatsMap = {}; 
     let isWrongMode = false;
+
+    // 分组控制变量
+    let currentGroupIndex = 0; 
 
     let currentWordObj = null;
     let correctIndex = -1;
@@ -623,6 +648,7 @@
 
     const themeSelect = document.getElementById('themeSelect');
     const fileSelect = document.getElementById('fileSelect');
+    const groupSizeSelect = document.getElementById('groupSizeSelect');
     const orderSelect = document.getElementById('orderSelect');
     const repeatSelect = document.getElementById('repeatSelect');
     const modeSelect = document.getElementById('modeSelect');
@@ -642,6 +668,7 @@
     const pauseBtn = document.getElementById('pauseBtn');
 
     // UI 统计节点
+    const groupInfoText = document.getElementById('groupInfoText');
     const dictTotalCountEl = document.getElementById('dictTotalCount');
     const masteredCountEl = document.getElementById('masteredCount');
     const remainingCountEl = document.getElementById('remainingCount');
@@ -674,9 +701,13 @@
 
             const savedStats = localStorage.getItem(`vocab_session_stats_${fileKey}`);
             stats = savedStats ? JSON.parse(savedStats) : { correct: 0, wrong: 0, total: 0 };
+            
+            const savedGroupIdx = localStorage.getItem(`vocab_group_index_${fileKey}`);
+            currentGroupIndex = savedGroupIdx ? parseInt(savedGroupIdx, 10) : 0;
         } catch (e) {
             wordStatsMap = {};
             stats = { correct: 0, wrong: 0, total: 0 };
+            currentGroupIndex = 0;
         }
     }
 
@@ -684,6 +715,7 @@
         const fileKey = getCurrentFileKey();
         localStorage.setItem(`vocab_stats_map_${fileKey}`, JSON.stringify(wordStatsMap));
         localStorage.setItem(`vocab_session_stats_${fileKey}`, JSON.stringify(stats));
+        localStorage.setItem(`vocab_group_index_${fileKey}`, currentGroupIndex);
     }
 
     function loadSavedWrongWords() {
@@ -711,7 +743,6 @@
         }
     }
 
-    // 从错题本彻底删除单词
     function removeWordFromWrongList(wordKey) {
         wrongWordsList = wrongWordsList.filter(w => (w.headWord || w.word) !== wordKey);
         saveWrongWords();
@@ -728,6 +759,7 @@
             wordStatsMap = {};
             wrongWordsList = [];
             stats = { correct: 0, wrong: 0, total: 0 };
+            currentGroupIndex = 0;
             initTheme();
             updateWrongBadge();
             alert("本地缓存已完全清空！");
@@ -778,7 +810,14 @@
     fileSelect.addEventListener('change', () => {
         isWrongMode = false;
         appTitle.innerText = "快速背单词";
+        currentGroupIndex = 0;
         loadVocabulary();
+    });
+
+    groupSizeSelect.addEventListener('change', () => {
+        currentGroupIndex = 0;
+        setupGroupData();
+        nextWord();
     });
 
     loadWrongBtn.addEventListener('click', () => {
@@ -788,8 +827,9 @@
         }
         isWrongMode = true;
         appTitle.innerText = "错题本练习";
+        currentGroupIndex = 0;
         loadDictCache();
-        filterVocabulary();
+        setupGroupData();
         sequenceIndex = 0;
         updateStatsUI();
         modalOverlay.classList.remove('active');
@@ -804,7 +844,7 @@
                 isWrongMode = false;
                 appTitle.innerText = "快速背单词";
                 loadDictCache();
-                filterVocabulary();
+                setupGroupData();
                 nextWord();
             }
         }
@@ -861,7 +901,7 @@
             fullVocabulary = await response.json();
             
             loadDictCache();
-            filterVocabulary();
+            setupGroupData();
             
             sequenceIndex = 0;
             updateStatsUI();
@@ -872,21 +912,65 @@
         }
     }
 
-    // 过滤词库：过滤掉答对已满 3 次的单词
-    function filterVocabulary() {
+    // 根据分组设置切割单词
+    function setupGroupData() {
         const source = isWrongMode ? wrongWordsList : fullVocabulary;
-        vocabulary = source.filter(item => {
+        const gSizeVal = groupSizeSelect.value;
+
+        if (gSizeVal === 'all') {
+            currentGroupList = source;
+            currentGroupIndex = 0;
+        } else {
+            const gSize = parseInt(gSizeVal, 10);
+            const totalGroups = Math.max(1, Math.ceil(source.length / gSize));
+            
+            // 防越界校验
+            if (currentGroupIndex >= totalGroups) {
+                currentGroupIndex = totalGroups - 1;
+            }
+
+            const start = currentGroupIndex * gSize;
+            const end = start + gSize;
+            currentGroupList = source.slice(start, end);
+        }
+
+        filterGroupVocabulary();
+    }
+
+    // 过滤当前分组内未掌握的单词
+    function filterGroupVocabulary() {
+        vocabulary = currentGroupList.filter(item => {
             const key = item.headWord || item.word;
             return (wordStatsMap[key] || 0) < 3;
         });
     }
 
     function nextWord() {
-        if (!vocabulary || vocabulary.length < 4) {
+        // 当前组已被全部掌握
+        if (!vocabulary || vocabulary.length === 0) {
+            const source = isWrongMode ? wrongWordsList : fullVocabulary;
+            const gSizeVal = groupSizeSelect.value;
+
+            if (gSizeVal !== 'all') {
+                const gSize = parseInt(gSizeVal, 10);
+                const totalGroups = Math.ceil(source.length / gSize);
+
+                if (currentGroupIndex + 1 < totalGroups) {
+                    alert(`🎉 恭喜！您已完美掌握第 ${currentGroupIndex + 1} 组的所有单词！\n即将为您自动开启第 ${currentGroupIndex + 2} 组。`);
+                    currentGroupIndex++;
+                    saveDictCache();
+                    setupGroupData();
+                    sequenceIndex = 0;
+                    nextWord();
+                    return;
+                }
+            }
+
+            // 全部分组/全部单词通关
             if (isWrongMode) {
-                wordText.innerText = "🎉 错题本词条已全部掌握淘汰！";
-            } else if (fullVocabulary.length > 0) {
-                wordText.innerText = "🎉 当前词库已被完全掌握！";
+                wordText.innerText = "🎉 错题本词条已全部淘汰！";
+            } else {
+                wordText.innerText = "🎉 当前词库已被完全通关掌握！";
             }
             disableOptions(true);
             updateStatsUI();
@@ -917,7 +1001,7 @@
             }
         });
 
-        const pool = (isWrongMode ? wrongWordsList : fullVocabulary).length >= 4 ? (isWrongMode ? wrongWordsList : fullVocabulary) : vocabulary;
+        const pool = (isWrongMode ? wrongWordsList : fullVocabulary).length >= 4 ? (isWrongMode ? wrongWordsList : fullVocabulary) : currentGroupList;
         const wrongOptions = [];
         while (wrongOptions.length < 3) {
             const rand = Math.floor(Math.random() * pool.length);
@@ -1031,7 +1115,7 @@
 
     function handleFastTimeout() {
         if (!answered && !isPaused) {
-            checkAnswer(-1); // 传入 -1 标记超时答错
+            checkAnswer(-1); 
         }
     }
 
@@ -1063,12 +1147,11 @@
             
             wordStatsMap[wordKey] = (wordStatsMap[wordKey] || 0) + 1;
 
-            // 答对达到 3 次
             if (wordStatsMap[wordKey] >= 3) {
                 if (isWrongMode) {
-                    removeWordFromWrongList(wordKey); // 从错题本彻底删除并保存
+                    removeWordFromWrongList(wordKey);
                 }
-                filterVocabulary();
+                filterGroupVocabulary();
             }
         } else {
             if (selectedIndex >= 0) {
@@ -1127,10 +1210,20 @@
 
     function updateStatsUI() {
         const source = isWrongMode ? wrongWordsList : fullVocabulary;
-        const totalDict = source.length;
+        const gSizeVal = groupSizeSelect.value;
+
+        if (gSizeVal === 'all') {
+            groupInfoText.innerText = `当前模式: 全部单词`;
+        } else {
+            const gSize = parseInt(gSizeVal, 10);
+            const totalGroups = Math.max(1, Math.ceil(source.length / gSize));
+            groupInfoText.innerText = `当前进度: 第 ${currentGroupIndex + 1} / ${totalGroups} 组 (每组${currentGroupList.length}词)`;
+        }
+
+        const totalDict = currentGroupList.length;
         
         let masteredCount = 0;
-        source.forEach(item => {
+        currentGroupList.forEach(item => {
             const key = item.headWord || item.word;
             if ((wordStatsMap[key] || 0) >= 3) {
                 masteredCount++;
