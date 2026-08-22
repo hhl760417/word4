@@ -245,16 +245,32 @@
 
         .score-board {
             display: flex;
-            justify-content: space-around;
+            flex-direction: column;
+            gap: 6px;
             background-color: var(--score-bg);
-            padding: 10px;
+            padding: 10px 12px;
             border-radius: 10px;
             margin-bottom: 14px;
             font-weight: bold;
             font-size: 13px;
         }
 
+        .score-row {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+
+        .score-divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 2px 0;
+        }
+
         .score-item { text-align: center; }
+        .score-total-dict { color: var(--primary-color); }
+        .score-mastered { color: var(--success-color); }
+        .score-remaining { color: var(--warning-color); }
         .score-correct { color: var(--success-color); }
         .score-wrong { color: var(--error-color); }
         .score-total { color: var(--primary-color); }
@@ -443,10 +459,19 @@
         <button class="settings-btn" id="openModalBtn">⚙️ 设置</button>
     </div>
 
+    <!-- 统计看板 -->
     <div class="score-board">
-        <div class="score-item">正确: <span id="correctCount" class="score-correct">0</span></div>
-        <div class="score-item">错误: <span id="wrongCount" class="score-wrong">0</span></div>
-        <div class="score-item">总计: <span id="totalCount" class="score-total">0</span></div>
+        <div class="score-row">
+            <div class="score-item">总词条: <span id="dictTotalCount" class="score-total-dict">0</span></div>
+            <div class="score-item">已掌握: <span id="masteredCount" class="score-mastered">0</span></div>
+            <div class="score-item">剩余: <span id="remainingCount" class="score-remaining">0</span></div>
+        </div>
+        <div class="score-divider"></div>
+        <div class="score-row">
+            <div class="score-item">正确: <span id="correctCount" class="score-correct">0</span></div>
+            <div class="score-item">错误: <span id="wrongCount" class="score-wrong">0</span></div>
+            <div class="score-item">答题总计: <span id="totalCount" class="score-total">0</span></div>
+        </div>
     </div>
 
     <div class="card" id="wordCard">
@@ -572,7 +597,7 @@
     let fullVocabulary = [];
     let vocabulary = [];
     let wrongWordsList = [];
-    let wordStatsMap = {}; // 记录每个单词正确答对次数的字典
+    let wordStatsMap = {}; // 记录各个单词连续答对次数
     let isWrongMode = false;
 
     let currentWordObj = null;
@@ -616,11 +641,15 @@
     const nextBtn = document.getElementById('nextBtn');
     const pauseBtn = document.getElementById('pauseBtn');
 
+    // UI 统计节点
+    const dictTotalCountEl = document.getElementById('dictTotalCount');
+    const masteredCountEl = document.getElementById('masteredCount');
+    const remainingCountEl = document.getElementById('remainingCount');
     const correctCountEl = document.getElementById('correctCount');
     const wrongCountEl = document.getElementById('wrongCount');
     const totalCountEl = document.getElementById('totalCount');
 
-    // 1. 初始化及存储逻辑
+    // 主题逻辑处理
     function initTheme() {
         const savedTheme = localStorage.getItem('app_theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -633,17 +662,28 @@
         localStorage.setItem('app_theme', selectedTheme);
     });
 
-    function loadSavedWordStats() {
+    function getCurrentFileKey() {
+        return isWrongMode ? 'wrong_list_mode' : (fileSelect.value || 'default');
+    }
+
+    function loadDictCache() {
+        const fileKey = getCurrentFileKey();
         try {
-            const saved = localStorage.getItem('vocab_word_stats');
-            wordStatsMap = saved ? JSON.parse(saved) : {};
+            const savedStatsMap = localStorage.getItem(`vocab_stats_map_${fileKey}`);
+            wordStatsMap = savedStatsMap ? JSON.parse(savedStatsMap) : {};
+
+            const savedStats = localStorage.getItem(`vocab_session_stats_${fileKey}`);
+            stats = savedStats ? JSON.parse(savedStats) : { correct: 0, wrong: 0, total: 0 };
         } catch (e) {
             wordStatsMap = {};
+            stats = { correct: 0, wrong: 0, total: 0 };
         }
     }
 
-    function saveWordStats() {
-        localStorage.setItem('vocab_word_stats', JSON.stringify(wordStatsMap));
+    function saveDictCache() {
+        const fileKey = getCurrentFileKey();
+        localStorage.setItem(`vocab_stats_map_${fileKey}`, JSON.stringify(wordStatsMap));
+        localStorage.setItem(`vocab_session_stats_${fileKey}`, JSON.stringify(stats));
     }
 
     function loadSavedWrongWords() {
@@ -671,19 +711,26 @@
         }
     }
 
+    // 从错题本彻底删除单词
+    function removeWordFromWrongList(wordKey) {
+        wrongWordsList = wrongWordsList.filter(w => (w.headWord || w.word) !== wordKey);
+        saveWrongWords();
+    }
+
     function updateWrongBadge() {
         wrongCountBadge.innerText = wrongWordsList.length;
     }
 
     // 清除缓存
     clearCacheBtn.addEventListener('click', () => {
-        if (confirm("确定要清除手机上的所有缓存数据吗？（包含答对记录、错题本及主题偏好）")) {
+        if (confirm("确定要清除手机上的所有缓存数据吗？（包含练习进度、错题本及主题设置）")) {
             localStorage.clear();
             wordStatsMap = {};
             wrongWordsList = [];
+            stats = { correct: 0, wrong: 0, total: 0 };
             initTheme();
             updateWrongBadge();
-            alert("缓存已清空！词库将重新加载。");
+            alert("本地缓存已完全清空！");
             modalOverlay.classList.remove('active');
             loadVocabulary();
         }
@@ -740,10 +787,10 @@
             return;
         }
         isWrongMode = true;
-        filterVocabulary();
         appTitle.innerText = "错题本练习";
+        loadDictCache();
+        filterVocabulary();
         sequenceIndex = 0;
-        stats = { correct: 0, wrong: 0, total: 0 };
         updateStatsUI();
         modalOverlay.classList.remove('active');
         nextWord();
@@ -756,6 +803,7 @@
             if (isWrongMode) {
                 isWrongMode = false;
                 appTitle.innerText = "快速背单词";
+                loadDictCache();
                 filterVocabulary();
                 nextWord();
             }
@@ -811,10 +859,11 @@
             if (!response.ok) throw new Error("网络错误");
             
             fullVocabulary = await response.json();
+            
+            loadDictCache();
             filterVocabulary();
             
             sequenceIndex = 0;
-            stats = { correct: 0, wrong: 0, total: 0 };
             updateStatsUI();
             
             nextWord();
@@ -834,11 +883,13 @@
 
     function nextWord() {
         if (!vocabulary || vocabulary.length < 4) {
-            if (fullVocabulary.length > 0 && vocabulary.length < 4) {
+            if (isWrongMode) {
+                wordText.innerText = "🎉 错题本词条已全部掌握淘汰！";
+            } else if (fullVocabulary.length > 0) {
                 wordText.innerText = "🎉 当前词库已被完全掌握！";
-                disableOptions(true);
-                return;
             }
+            disableOptions(true);
+            updateStatsUI();
             return;
         }
         
@@ -866,7 +917,7 @@
             }
         });
 
-        const pool = fullVocabulary.length >= 4 ? fullVocabulary : vocabulary;
+        const pool = (isWrongMode ? wrongWordsList : fullVocabulary).length >= 4 ? (isWrongMode ? wrongWordsList : fullVocabulary) : vocabulary;
         const wrongOptions = [];
         while (wrongOptions.length < 3) {
             const rand = Math.floor(Math.random() * pool.length);
@@ -887,6 +938,8 @@
                 wrongOptIdx++;
             }
         });
+
+        updateStatsUI();
     }
 
     function showWordDetail() {
@@ -1008,12 +1061,13 @@
             optionBtns[selectedIndex].classList.add('correct');
             stats.correct++;
             
-            // 正确次数 +1
             wordStatsMap[wordKey] = (wordStatsMap[wordKey] || 0) + 1;
-            saveWordStats();
 
-            // 如果满3次，将其从当前池子移除
+            // 答对达到 3 次
             if (wordStatsMap[wordKey] >= 3) {
+                if (isWrongMode) {
+                    removeWordFromWrongList(wordKey); // 从错题本彻底删除并保存
+                }
                 filterVocabulary();
             }
         } else {
@@ -1023,13 +1077,13 @@
             optionBtns[correctIndex].classList.add('correct');
             stats.wrong++;
             
-            // 答错重置计数
             wordStatsMap[wordKey] = 0;
-            saveWordStats();
-            
-            addWordToWrongList(currentWordObj);
+            if (!isWrongMode) {
+                addWordToWrongList(currentWordObj);
+            }
         }
 
+        saveDictCache();
         updateStatsUI();
         disableOptions(true);
 
@@ -1072,9 +1126,28 @@
     }
 
     function updateStatsUI() {
+        const source = isWrongMode ? wrongWordsList : fullVocabulary;
+        const totalDict = source.length;
+        
+        let masteredCount = 0;
+        source.forEach(item => {
+            const key = item.headWord || item.word;
+            if ((wordStatsMap[key] || 0) >= 3) {
+                masteredCount++;
+            }
+        });
+
+        const remainingCount = totalDict - masteredCount;
+
+        dictTotalCountEl.innerText = totalDict;
+        masteredCountEl.innerText = masteredCount;
+        remainingCountEl.innerText = remainingCount;
+
         correctCountEl.innerText = stats.correct;
         wrongCountEl.innerText = stats.wrong;
         totalCountEl.innerText = stats.total;
+
+        updateWrongBadge();
     }
 
     function resetOptionStyles() {
@@ -1102,7 +1175,6 @@
     }
 
     initTheme();
-    loadSavedWordStats();
     loadSavedWrongWords();
     fetchFileList();
 </script>
