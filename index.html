@@ -20,6 +20,10 @@
             --score-bg: #f0f4f8;
             --modal-header-border: #eeeeee;
             --sub-text: #a0aec0;
+            --btn-height: 52px;
+
+            --option-font-size: calc(var(--btn-height) * 0.45);
+            --option-font-color: var(--text-color);
         }
 
         /* 夜间模式 (Dark Mode) */
@@ -56,7 +60,6 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            min-height: -webkit-fill-available;
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
@@ -184,6 +187,26 @@
             gap: 4px;
         }
 
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            width: 40px;
+            height: 38px;
+            cursor: pointer;
+            background: transparent;
+            padding: 2px;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+
         label {
             font-size: 13px;
             font-weight: 600;
@@ -200,10 +223,7 @@
             height: 42px;
         }
 
-        .btn-group {
-            display: flex;
-            gap: 8px;
-        }
+        .btn-group { display: flex; gap: 8px; }
 
         .btn-wrong-notebook {
             background-color: rgba(231, 76, 60, 0.15);
@@ -243,6 +263,7 @@
             height: 42px;
         }
 
+        /* 顶部统计看板重构 */
         .score-board {
             display: flex;
             flex-direction: column;
@@ -251,14 +272,28 @@
             padding: 10px 12px;
             border-radius: 10px;
             margin-bottom: 14px;
+            font-size: 12px;
+        }
+
+        .stats-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stats-title {
+            font-size: 12px;
             font-weight: bold;
-            font-size: 13px;
+            color: var(--primary-color);
+            display: flex;
+            justify-content: space-between;
         }
 
         .score-row {
             display: flex;
             justify-content: space-around;
             width: 100%;
+            font-weight: 600;
         }
 
         .score-divider {
@@ -267,21 +302,10 @@
             margin: 2px 0;
         }
 
-        .group-info-row {
-            text-align: center;
-            font-size: 12px;
-            color: var(--primary-color);
-            font-weight: bold;
-            margin-bottom: 2px;
-        }
-
         .score-item { text-align: center; }
         .score-total-dict { color: var(--primary-color); }
         .score-mastered { color: var(--success-color); }
         .score-remaining { color: var(--warning-color); }
-        .score-correct { color: var(--success-color); }
-        .score-wrong { color: var(--error-color); }
-        .score-total { color: var(--primary-color); }
 
         .card {
             border: 2px solid var(--border-color);
@@ -289,7 +313,7 @@
             padding: 20px 12px;
             text-align: center;
             margin-bottom: 14px;
-            min-height: 110px;
+            min-height: 120px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -302,11 +326,12 @@
         }
 
         .word-text {
-            font-size: clamp(28px, 8vw, 36px);
+            font-size: clamp(20px, 6vw, 32px);
             font-weight: bold;
             color: var(--text-color);
             margin-bottom: 6px;
             word-break: break-word;
+            line-height: 1.3;
         }
 
         .long-press-tip {
@@ -333,20 +358,25 @@
         }
 
         .option-btn {
-            padding: 12px 14px;
-            font-size: 14px;
+            padding: 0 8px;
             border: 1.5px solid var(--border-color);
             background-color: var(--option-bg);
-            color: var(--text-color);
             border-radius: 10px;
             cursor: pointer;
             outline: none;
-            min-height: 52px;
+            height: var(--btn-height);
+            min-height: var(--btn-height);
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
-            line-height: 1.3;
+            line-height: 1.1;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: var(--option-font-size);
+            color: var(--option-font-color);
         }
 
         .option-btn.correct {
@@ -415,15 +445,6 @@
             margin-right: 6px;
         }
 
-        .trans-item { margin-bottom: 4px; }
-
-        .pos-badge {
-            display: inline-block;
-            font-weight: bold;
-            color: #e67e22;
-            min-width: 38px;
-        }
-
         .example-item {
             background-color: var(--score-bg);
             border-left: 3px solid var(--primary-color);
@@ -435,52 +456,41 @@
 
         .example-en { font-weight: 500; color: var(--text-color); }
         .example-cn { color: var(--text-secondary); margin-top: 2px; }
-
-        summary {
-            cursor: pointer;
-            color: var(--sub-text);
-            font-size: 11px;
-            outline: none;
-        }
-
-        .json-tree {
-            background-color: var(--score-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 8px;
-            font-family: monospace;
-            font-size: 10px;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 120px;
-            overflow-y: auto;
-            margin-top: 4px;
-            color: var(--text-color);
-        }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="container" id="appContainer">
     <div class="header-bar">
         <h1 id="appTitle">快速背单词</h1>
         <button class="settings-btn" id="openModalBtn">⚙️ 设置</button>
     </div>
 
-    <!-- 统计看板 -->
+    <!-- 统计看板：重构为 本词库 与 本组 区分统计 -->
     <div class="score-board">
-        <div class="group-info-row" id="groupInfoText">分组加载中...</div>
-        <div class="score-divider"></div>
-        <div class="score-row">
-            <div class="score-item">总词条: <span id="dictTotalCount" class="score-total-dict">0</span></div>
-            <div class="score-item">已掌握: <span id="masteredCount" class="score-mastered">0</span></div>
-            <div class="score-item">剩余: <span id="remainingCount" class="score-remaining">0</span></div>
+        <!-- 本词库统计区块 -->
+        <div class="stats-block">
+            <div class="stats-title">📚 本词库统计</div>
+            <div class="score-row">
+                <div class="score-item">总词条: <span id="dictTotalCount" class="score-total-dict">0</span></div>
+                <div class="score-item">已掌握: <span id="dictMasteredCount" class="score-mastered">0</span></div>
+                <div class="score-item">剩余: <span id="dictRemainingCount" class="score-remaining">0</span></div>
+            </div>
         </div>
+
         <div class="score-divider"></div>
-        <div class="score-row">
-            <div class="score-item">正确: <span id="correctCount" class="score-correct">0</span></div>
-            <div class="score-item">错误: <span id="wrongCount" class="score-wrong">0</span></div>
-            <div class="score-item">答题总计: <span id="totalCount" class="score-total">0</span></div>
+
+        <!-- 本组统计区块 -->
+        <div class="stats-block">
+            <div class="stats-title">
+                <span>📖 本组统计</span>
+                <span id="groupInfoText" style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">分组加载中...</span>
+            </div>
+            <div class="score-row">
+                <div class="score-item">总词条: <span id="groupTotalCount" class="score-total-dict">0</span></div>
+                <div class="score-item">已掌握: <span id="groupMasteredCount" class="score-mastered">0</span></div>
+                <div class="score-item">剩余: <span id="groupRemainingCount" class="score-remaining">0</span></div>
+            </div>
         </div>
     </div>
 
@@ -512,7 +522,6 @@
         </div>
 
         <div class="controls">
-            <!-- 主题切换设置 -->
             <div class="control-group">
                 <label for="themeSelect">主题模式：</label>
                 <select id="themeSelect">
@@ -522,13 +531,40 @@
             </div>
 
             <div class="control-group">
+                <label for="btnFontSizeSelect">按钮文字字号：</label>
+                <select id="btnFontSizeSelect">
+                    <option value="calc(var(--btn-height) * 0.3)">小 (30% 按钮高)</option>
+                    <option value="calc(var(--btn-height) * 0.45)">默认 (45% 按钮高)</option>
+                    <option value="calc(var(--btn-height) * 0.6)">中 (60% 按钮高)</option>
+                    <option value="calc(var(--btn-height) * 0.75)">大 (75% 按钮高)</option>
+                    <option value="calc(var(--btn-height) * 0.9)">特大 (90% 按钮高)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="btnFontColorInput">按钮文字颜色：</label>
+                <div class="color-picker-wrapper">
+                    <input type="color" id="btnFontColorInput" value="#2c3e50">
+                    <select id="btnFontColorSelect" style="flex: 1;">
+                        <option value="default">跟随主题颜色</option>
+                        <option value="#2c3e50">深蓝灰 (默认)</option>
+                        <option value="#4a90e2">主题蓝</option>
+                        <option value="#2ecc71">翡翠绿</option>
+                        <option value="#e74c3c">珊瑚红</option>
+                        <option value="#8e44ad">紫罗兰</option>
+                        <option value="#000000">纯黑</option>
+                        <option value="#ffffff">纯白</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group">
                 <label for="fileSelect">选择词库文件：</label>
                 <select id="fileSelect">
                     <option value="">正在获取词库列表...</option>
                 </select>
             </div>
 
-            <!-- 增加分组设置 -->
             <div class="control-group">
                 <label for="groupSizeSelect">每组单词数量：</label>
                 <select id="groupSizeSelect">
@@ -536,6 +572,14 @@
                     <option value="20" selected>每组 20 个</option>
                     <option value="50">每组 50 个</option>
                     <option value="all">不分组（全部加载）</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="studyTypeSelect">学习方式：</label>
+                <select id="studyTypeSelect">
+                    <option value="enToCn" selected>🔤 英译中 (显示英文选释义)</option>
+                    <option value="cnToEn">🇨🇳 中译英 (显示中文选单词)</option>
                 </select>
             </div>
 
@@ -568,21 +612,20 @@
                 <label for="modeSelect">切换模式：</label>
                 <select id="modeSelect">
                     <option value="manual">手动切换</option>
-                    <option value="auto">答题后自动切换</option>
+                    <option value="auto" selected>答题后自动切换</option>
                     <option value="fast">快速切换 (限时未答算错)</option>
                 </select>
             </div>
 
             <div class="control-group">
                 <label for="intervalSelect">朗读后间隔时间：</label>
-                <select id="intervalSelect" disabled>
-                    <option value="1000">1 秒</option>
-                    <option value="3000" selected>3 秒</option>
+                <select id="intervalSelect">
+                    <option value="1000" selected>1 秒</option>
+                    <option value="3000">3 秒</option>
                     <option value="5000">5 秒</option>
                 </select>
             </div>
 
-            <!-- 清除缓存 -->
             <div class="control-group" style="margin-top: 6px;">
                 <label>系统数据管理：</label>
                 <button id="clearCacheBtn" class="btn-clear-cache">🗑️ 清除所有本地缓存</button>
@@ -615,15 +658,15 @@
     const GITHUB_API_URL = "https://api.github.com/repos/hhl760417/english-vocabulary/contents/json_original/json-full";
     const CDN_BASE_URL = "https://cdn.jsdelivr.net/gh/hhl760417/english-vocabulary@master/json_original/json-full/";
 
-    let fullVocabulary = []; // 当前整套词库
-    let currentGroupList = []; // 当前分组内全部词条
-    let vocabulary = []; // 当前分组内未掌握（未满3次）词条
-    let wrongWordsList = [];
+    let fullVocabulary = []; 
+    let currentGroupList = []; 
+    let vocabulary = []; 
+    let wrongWordsList = []; 
     let wordStatsMap = {}; 
     let isWrongMode = false;
 
-    // 分组控制变量
     let currentGroupIndex = 0; 
+    let studyType = "enToCn"; 
 
     let currentWordObj = null;
     let correctIndex = -1;
@@ -647,8 +690,13 @@
     const detailModalBody = document.getElementById('detailModalBody');
 
     const themeSelect = document.getElementById('themeSelect');
+    const btnFontSizeSelect = document.getElementById('btnFontSizeSelect');
+    const btnFontColorInput = document.getElementById('btnFontColorInput');
+    const btnFontColorSelect = document.getElementById('btnFontColorSelect');
+
     const fileSelect = document.getElementById('fileSelect');
     const groupSizeSelect = document.getElementById('groupSizeSelect');
+    const studyTypeSelect = document.getElementById('studyTypeSelect');
     const orderSelect = document.getElementById('orderSelect');
     const repeatSelect = document.getElementById('repeatSelect');
     const modeSelect = document.getElementById('modeSelect');
@@ -667,21 +715,70 @@
     const nextBtn = document.getElementById('nextBtn');
     const pauseBtn = document.getElementById('pauseBtn');
 
-    // UI 统计节点
+    /* 顶部看板 DOM 映射 */
     const groupInfoText = document.getElementById('groupInfoText');
     const dictTotalCountEl = document.getElementById('dictTotalCount');
-    const masteredCountEl = document.getElementById('masteredCount');
-    const remainingCountEl = document.getElementById('remainingCount');
-    const correctCountEl = document.getElementById('correctCount');
-    const wrongCountEl = document.getElementById('wrongCount');
-    const totalCountEl = document.getElementById('totalCount');
+    const dictMasteredCountEl = document.getElementById('dictMasteredCount');
+    const dictRemainingCountEl = document.getElementById('dictRemainingCount');
 
-    // 主题逻辑处理
+    const groupTotalCountEl = document.getElementById('groupTotalCount');
+    const groupMasteredCountEl = document.getElementById('groupMasteredCount');
+    const groupRemainingCountEl = document.getElementById('groupRemainingCount');
+
+    initTheme();
+    initOptionStyleControls();
+    fetchFileList();
+
     function initTheme() {
         const savedTheme = localStorage.getItem('app_theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
         themeSelect.value = savedTheme;
     }
+
+    function initOptionStyleControls() {
+        const savedFontSize = localStorage.getItem('app_btn_font_size');
+        if (savedFontSize) {
+            document.documentElement.style.setProperty('--option-font-size', savedFontSize);
+            btnFontSizeSelect.value = savedFontSize;
+        }
+
+        const savedFontColor = localStorage.getItem('app_btn_font_color');
+        if (savedFontColor) {
+            if (savedFontColor === 'default') {
+                document.documentElement.style.removeProperty('--option-font-color');
+                btnFontColorSelect.value = 'default';
+            } else {
+                document.documentElement.style.setProperty('--option-font-color', savedFontColor);
+                btnFontColorInput.value = savedFontColor;
+                btnFontColorSelect.value = savedFontColor;
+            }
+        }
+    }
+
+    btnFontSizeSelect.addEventListener('change', (e) => {
+        const fontSizeVal = e.target.value;
+        document.documentElement.style.setProperty('--option-font-size', fontSizeVal);
+        localStorage.setItem('app_btn_font_size', fontSizeVal);
+    });
+
+    btnFontColorInput.addEventListener('input', (e) => {
+        const colorVal = e.target.value;
+        document.documentElement.style.setProperty('--option-font-color', colorVal);
+        btnFontColorSelect.value = colorVal;
+        localStorage.setItem('app_btn_font_color', colorVal);
+    });
+
+    btnFontColorSelect.addEventListener('change', (e) => {
+        const colorVal = e.target.value;
+        if (colorVal === 'default') {
+            document.documentElement.style.removeProperty('--option-font-color');
+            localStorage.setItem('app_btn_font_color', 'default');
+        } else {
+            document.documentElement.style.setProperty('--option-font-color', colorVal);
+            btnFontColorInput.value = colorVal;
+            localStorage.setItem('app_btn_font_color', colorVal);
+        }
+    });
 
     themeSelect.addEventListener('change', (e) => {
         const selectedTheme = e.target.value;
@@ -690,7 +787,13 @@
     });
 
     function getCurrentFileKey() {
-        return isWrongMode ? 'wrong_list_mode' : (fileSelect.value || 'default');
+        const typeSuffix = studyType === 'cnToEn' ? '_cnToEn' : '_enToCn';
+        const fileBase = isWrongMode ? 'wrong_list_mode' : (fileSelect.value || 'default');
+        return fileBase + typeSuffix;
+    }
+
+    function getWrongListStorageKey() {
+        return studyType === 'cnToEn' ? 'vocab_wrong_words_cnToEn' : 'vocab_wrong_words_enToCn';
     }
 
     function loadDictCache() {
@@ -720,7 +823,8 @@
 
     function loadSavedWrongWords() {
         try {
-            const saved = localStorage.getItem('vocab_wrong_words');
+            const key = getWrongListStorageKey();
+            const saved = localStorage.getItem(key);
             wrongWordsList = saved ? JSON.parse(saved) : [];
         } catch (e) {
             wrongWordsList = [];
@@ -729,7 +833,8 @@
     }
 
     function saveWrongWords() {
-        localStorage.setItem('vocab_wrong_words', JSON.stringify(wrongWordsList));
+        const key = getWrongListStorageKey();
+        localStorage.setItem(key, JSON.stringify(wrongWordsList));
         updateWrongBadge();
     }
 
@@ -743,23 +848,21 @@
         }
     }
 
-    function removeWordFromWrongList(wordKey) {
-        wrongWordsList = wrongWordsList.filter(w => (w.headWord || w.word) !== wordKey);
-        saveWrongWords();
-    }
-
     function updateWrongBadge() {
         wrongCountBadge.innerText = wrongWordsList.length;
     }
 
-    // 清除缓存
     clearCacheBtn.addEventListener('click', () => {
-        if (confirm("确定要清除手机上的所有缓存数据吗？（包含练习进度、错题本及主题设置）")) {
+        if (confirm("确定要清除手机上的所有缓存数据吗？（包含练习进度、错题本及主题与字体设置）")) {
             localStorage.clear();
             wordStatsMap = {};
             wrongWordsList = [];
             stats = { correct: 0, wrong: 0, total: 0 };
             currentGroupIndex = 0;
+
+            document.documentElement.style.removeProperty('--option-font-size');
+            document.documentElement.style.removeProperty('--option-font-color');
+            
             initTheme();
             updateWrongBadge();
             alert("本地缓存已完全清空！");
@@ -769,7 +872,7 @@
     });
 
     openModalBtn.addEventListener('click', () => {
-        updateWrongBadge();
+        loadSavedWrongWords();
         modalOverlay.classList.add('active');
     });
     closeModalBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
@@ -809,7 +912,7 @@
 
     fileSelect.addEventListener('change', () => {
         isWrongMode = false;
-        appTitle.innerText = "快速背单词";
+        updateAppTitle();
         currentGroupIndex = 0;
         loadVocabulary();
     });
@@ -820,13 +923,32 @@
         nextWord();
     });
 
+    studyTypeSelect.addEventListener('change', () => {
+        studyType = studyTypeSelect.value;
+        loadSavedWrongWords();
+        loadDictCache();
+        updateAppTitle();
+        setupGroupData();
+        nextWord();
+    });
+
+    function updateAppTitle() {
+        const modeName = studyType === 'cnToEn' ? '中译英' : '英译中';
+        if (isWrongMode) {
+            appTitle.innerText = `错题本 (${modeName})`;
+        } else {
+            appTitle.innerText = `背单词 (${modeName})`;
+        }
+    }
+
     loadWrongBtn.addEventListener('click', () => {
+        loadSavedWrongWords();
         if (wrongWordsList.length < 4) {
-            alert("错题本至少需要 4 个单词才能开启练习！");
+            alert(`当前${studyType === 'cnToEn' ? '中译英' : '英译中'}错题本至少需要 4 个单词才能开启练习！`);
             return;
         }
         isWrongMode = true;
-        appTitle.innerText = "错题本练习";
+        updateAppTitle();
         currentGroupIndex = 0;
         loadDictCache();
         setupGroupData();
@@ -837,12 +959,12 @@
     });
 
     clearWrongBtn.addEventListener('click', () => {
-        if (confirm("确定要清空错题本吗？")) {
+        if (confirm("确定要清空当前模式下的错题本吗？")) {
             wrongWordsList = [];
             saveWrongWords();
             if (isWrongMode) {
                 isWrongMode = false;
-                appTitle.innerText = "快速背单词";
+                updateAppTitle();
                 loadDictCache();
                 setupGroupData();
                 nextWord();
@@ -900,7 +1022,9 @@
             
             fullVocabulary = await response.json();
             
+            loadSavedWrongWords();
             loadDictCache();
+            updateAppTitle();
             setupGroupData();
             
             sequenceIndex = 0;
@@ -912,7 +1036,6 @@
         }
     }
 
-    // 根据分组设置切割单词
     function setupGroupData() {
         const source = isWrongMode ? wrongWordsList : fullVocabulary;
         const gSizeVal = groupSizeSelect.value;
@@ -924,7 +1047,6 @@
             const gSize = parseInt(gSizeVal, 10);
             const totalGroups = Math.max(1, Math.ceil(source.length / gSize));
             
-            // 防越界校验
             if (currentGroupIndex >= totalGroups) {
                 currentGroupIndex = totalGroups - 1;
             }
@@ -937,7 +1059,6 @@
         filterGroupVocabulary();
     }
 
-    // 过滤当前分组内未掌握的单词
     function filterGroupVocabulary() {
         vocabulary = currentGroupList.filter(item => {
             const key = item.headWord || item.word;
@@ -946,7 +1067,8 @@
     }
 
     function nextWord() {
-        // 当前组已被全部掌握
+        clearTimeout(autoTimer);
+
         if (!vocabulary || vocabulary.length === 0) {
             const source = isWrongMode ? wrongWordsList : fullVocabulary;
             const gSizeVal = groupSizeSelect.value;
@@ -956,295 +1078,195 @@
                 const totalGroups = Math.ceil(source.length / gSize);
 
                 if (currentGroupIndex + 1 < totalGroups) {
-                    alert(`🎉 恭喜！您已完美掌握第 ${currentGroupIndex + 1} 组的所有单词！\n即将为您自动开启第 ${currentGroupIndex + 2} 组。`);
+                    alert(`🎉 恭喜！您已掌握第 ${currentGroupIndex + 1} 组的所有单词，即将自动进入下一组！`);
                     currentGroupIndex++;
                     saveDictCache();
                     setupGroupData();
-                    sequenceIndex = 0;
                     nextWord();
                     return;
                 }
             }
-
-            // 全部分组/全部单词通关
-            if (isWrongMode) {
-                wordText.innerText = "🎉 错题本词条已全部淘汰！";
-            } else {
-                wordText.innerText = "🎉 当前词库已被完全通关掌握！";
-            }
-            disableOptions(true);
+            
+            wordText.innerText = "🎉 词库已全部掌握！";
+            optionsContainer.style.display = "none";
             updateStatsUI();
             return;
         }
-        
-        answered = false;
-        isPaused = false;
-        pauseBtn.innerText = "暂停";
-        clearTimeout(autoTimer);
-        resetOptionStyles();
-        disableOptions(false);
 
-        let targetIndex = 0;
-        if (orderSelect.value === 'sequence') {
-            targetIndex = sequenceIndex % vocabulary.length;
-            sequenceIndex = (sequenceIndex + 1) % vocabulary.length;
+        optionsContainer.style.display = "flex";
+        answered = false;
+        resetOptionStyles();
+
+        if (orderSelect.value === 'random') {
+            currentWordObj = vocabulary[Math.floor(Math.random() * vocabulary.length)];
         } else {
-            targetIndex = Math.floor(Math.random() * vocabulary.length);
+            if (sequenceIndex >= vocabulary.length) sequenceIndex = 0;
+            currentWordObj = vocabulary[sequenceIndex];
+            sequenceIndex++;
         }
 
-        currentWordObj = vocabulary[targetIndex];
-        wordText.innerText = currentWordObj.headWord || currentWordObj.word || "Unknown";
+        const headWord = currentWordObj.headWord || currentWordObj.word;
+        if (studyType === 'cnToEn') {
+            wordText.innerText = getChineseTrans(currentWordObj);
+            speakBtn.style.display = "none";
+        } else {
+            wordText.innerText = headWord;
+            speakBtn.style.display = "inline-block";
+            speakWord();
+        }
 
-        speakWord(() => {
-            if (modeSelect.value === 'fast' && !answered && !isPaused) {
-                startAutoTimer(handleFastTimeout);
-            }
+        const sourceList = (fullVocabulary && fullVocabulary.length >= 4) ? fullVocabulary : vocabulary;
+        let distractors = sourceList.filter(item => {
+            const k1 = item.headWord || item.word;
+            return k1 !== headWord;
         });
 
-        const pool = (isWrongMode ? wrongWordsList : fullVocabulary).length >= 4 ? (isWrongMode ? wrongWordsList : fullVocabulary) : currentGroupList;
-        const wrongOptions = [];
-        while (wrongOptions.length < 3) {
-            const rand = Math.floor(Math.random() * pool.length);
-            const candidate = pool[rand];
-            if (candidate !== currentWordObj && !wrongOptions.includes(candidate)) {
-                wrongOptions.push(candidate);
-            }
-        }
+        distractors = shuffleArray(distractors).slice(0, 3);
+        const choices = shuffleArray([currentWordObj, ...distractors]);
 
-        correctIndex = Math.floor(Math.random() * 4);
-        let wrongOptIdx = 0;
+        correctIndex = choices.findIndex(item => (item.headWord || item.word) === headWord);
 
-        optionBtns.forEach((btn, i) => {
-            if (i === correctIndex) {
-                btn.innerText = getChineseMeaning(currentWordObj);
+        optionBtns.forEach((btn, idx) => {
+            btn.disabled = false;
+            if (studyType === 'cnToEn') {
+                btn.innerText = choices[idx].headWord || choices[idx].word;
             } else {
-                btn.innerText = getChineseMeaning(wrongOptions[wrongOptIdx]);
-                wrongOptIdx++;
+                btn.innerText = getChineseTrans(choices[idx]);
             }
         });
 
         updateStatsUI();
-    }
 
-    function showWordDetail() {
-        if (!currentWordObj) return;
-
-        const raw = currentWordObj;
-        const innerWord = raw.content?.word?.content || raw;
-        const word = raw.headWord || raw.word || '未知单词';
-        
-        detailWordTitle.innerText = `解析: ${word}`;
-
-        let html = '';
-        const usphone = raw.usphone || innerWord.usphone;
-        const ukphone = raw.ukphone || innerWord.ukphone;
-        if (usphone || ukphone) {
-            html += `<div class="detail-section">
-                <div class="detail-title">发音</div>
-                <div>
-                    ${usphone ? `<span class="phonetic-tag">美 /${usphone}/</span>` : ''}
-                    ${ukphone ? `<span class="phonetic-tag">英 /${ukphone}/</span>` : ''}
-                </div>
-            </div>`;
+        if (modeSelect.value === 'fast' && !isPaused) {
+            autoTimer = setTimeout(() => {
+                if (!answered) checkAnswer(-1); 
+            }, 4000);
         }
-
-        const trans = innerWord.trans || raw.translations;
-        if (Array.isArray(trans) && trans.length > 0) {
-            html += `<div class="detail-section"><div class="detail-title">释义</div>`;
-            trans.forEach(t => {
-                html += `<div class="trans-item">
-                    ${t.pos || t.type ? `<span class="pos-badge">${t.pos || t.type}</span>` : ''}
-                    <span>${t.tranCn || t.translation || ''}</span>
-                </div>`;
-            });
-            html += `</div>`;
-        } else {
-            html += `<div class="detail-section"><div class="detail-title">释义</div><div>${getChineseMeaning(raw)}</div></div>`;
-        }
-
-        const sentences = innerWord.sentence?.sentences || raw.sentences;
-        if (Array.isArray(sentences) && sentences.length > 0) {
-            html += `<div class="detail-section"><div class="detail-title">例句</div>`;
-            sentences.forEach(s => {
-                html += `<div class="example-item">
-                    <div class="example-en">${s.sContent || s.en || ''}</div>
-                    <div class="example-cn">${s.sCn || s.cn || ''}</div>
-                </div>`;
-            });
-            html += `</div>`;
-        }
-
-        html += `<div style="margin-top: 10px;">
-            <details>
-                <summary>查看 JSON</summary>
-                <div class="json-tree">${JSON.stringify(currentWordObj, null, 2)}</div>
-            </details>
-        </div>`;
-
-        detailModalBody.innerHTML = html;
-        detailModalOverlay.classList.add('active');
-    }
-
-    function togglePause() {
-        if (isPaused) {
-            isPaused = false;
-            pauseBtn.innerText = "暂停";
-            disableOptions(answered);
-            if (!answered) {
-                speakWord(() => {
-                    if (modeSelect.value === 'fast') startAutoTimer(handleFastTimeout);
-                });
-            } else if (modeSelect.value === 'auto' || modeSelect.value === 'fast') {
-                startAutoTimer(() => nextWord());
-            }
-        } else {
-            isPaused = true;
-            pauseBtn.innerText = "继续";
-            clearTimeout(autoTimer);
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            disableOptions(true);
-        }
-    }
-
-    function startAutoTimer(callback) {
-        clearTimeout(autoTimer);
-        if (isPaused) return;
-        const delay = parseInt(intervalSelect.value, 10);
-        autoTimer = setTimeout(callback, delay);
-    }
-
-    function handleFastTimeout() {
-        if (!answered && !isPaused) {
-            checkAnswer(-1); 
-        }
-    }
-
-    function getChineseMeaning(item) {
-        if (!item) return "无释义";
-        if (item.content?.word?.content?.trans) {
-            const trans = item.content.word.content.trans;
-            if (Array.isArray(trans)) {
-                return trans.map(t => `${t.pos || ''} ${t.tranCn || ''}`).join('; ');
-            }
-        }
-        if (item.translations && Array.isArray(item.translations)) {
-            return item.translations.map(t => `${t.type || ''} ${t.translation || ''}`).join('; ');
-        }
-        return item.translation || item.tranCn || item.meaning || item.chinese || "无释义";
     }
 
     function checkAnswer(selectedIndex) {
-        if (answered || isPaused) return;
+        if (answered) return;
         answered = true;
         clearTimeout(autoTimer);
 
-        stats.total++;
         const wordKey = currentWordObj.headWord || currentWordObj.word;
 
         if (selectedIndex === correctIndex) {
-            optionBtns[selectedIndex].classList.add('correct');
+            if (selectedIndex >= 0) optionBtns[selectedIndex].classList.add('correct');
             stats.correct++;
-            
-            wordStatsMap[wordKey] = (wordStatsMap[wordKey] || 0) + 1;
 
+            wordStatsMap[wordKey] = (wordStatsMap[wordKey] || 0) + 1;
             if (wordStatsMap[wordKey] >= 3) {
-                if (isWrongMode) {
-                    removeWordFromWrongList(wordKey);
-                }
                 filterGroupVocabulary();
             }
         } else {
-            if (selectedIndex >= 0) {
-                optionBtns[selectedIndex].classList.add('wrong');
-            }
+            if (selectedIndex >= 0) optionBtns[selectedIndex].classList.add('wrong');
             optionBtns[correctIndex].classList.add('correct');
             stats.wrong++;
-            
+
             wordStatsMap[wordKey] = 0;
-            if (!isWrongMode) {
-                addWordToWrongList(currentWordObj);
-            }
+            addWordToWrongList(currentWordObj);
         }
 
+        speakWord();
+
+        stats.total++;
         saveDictCache();
         updateStatsUI();
         disableOptions(true);
 
-        const currentMode = modeSelect.value;
-        if ((currentMode === 'auto' || currentMode === 'fast') && !isPaused) {
-            startAutoTimer(() => nextWord());
+        if (modeSelect.value !== 'manual' && !isPaused) {
+            const delay = parseInt(intervalSelect.value, 10) || 1000;
+            autoTimer = setTimeout(() => {
+                nextWord();
+            }, delay);
         }
     }
 
-    function speakWord(onComplete) {
-        if (!('speechSynthesis' in window) || !currentWordObj) {
-            if (onComplete) onComplete();
-            return;
-        }
-
-        window.speechSynthesis.cancel();
-        const repeats = parseInt(repeatSelect.value, 10);
-        const textToSpeak = currentWordObj.headWord || currentWordObj.word;
-        let count = 0;
-
-        function speak() {
-            if (count < repeats && !isPaused) {
-                const utterance = new SpeechSynthesisUtterance(textToSpeak);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.9;
-                
-                utterance.onend = () => {
-                    count++;
-                    if (count < repeats && !isPaused) setTimeout(speak, 300);
-                    else if (onComplete && !isPaused) onComplete();
-                };
-
-                utterance.onerror = () => { if (onComplete) onComplete(); };
-
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        speak();
-    }
-
+    /* 重新实现的统计 UI 函数，精确区分词库和当前组数据 */
     function updateStatsUI() {
-        const source = isWrongMode ? wrongWordsList : fullVocabulary;
-        const gSizeVal = groupSizeSelect.value;
+        const fullSource = isWrongMode ? wrongWordsList : fullVocabulary;
+        const dictTotal = fullSource.length;
 
-        if (gSizeVal === 'all') {
-            groupInfoText.innerText = `当前模式: 全部单词`;
-        } else {
-            const gSize = parseInt(gSizeVal, 10);
-            const totalGroups = Math.max(1, Math.ceil(source.length / gSize));
-            groupInfoText.innerText = `当前进度: 第 ${currentGroupIndex + 1} / ${totalGroups} 组 (每组${currentGroupList.length}词)`;
-        }
-
-        const totalDict = currentGroupList.length;
-        
-        let masteredCount = 0;
-        currentGroupList.forEach(item => {
+        // 1. 本词库统计
+        let dictMastered = 0;
+        fullSource.forEach(item => {
             const key = item.headWord || item.word;
-            if ((wordStatsMap[key] || 0) >= 3) {
-                masteredCount++;
-            }
+            if ((wordStatsMap[key] || 0) >= 3) dictMastered++;
         });
 
-        const remainingCount = totalDict - masteredCount;
+        dictTotalCountEl.innerText = dictTotal;
+        dictMasteredCountEl.innerText = dictMastered;
+        dictRemainingCountEl.innerText = Math.max(0, dictTotal - dictMastered);
 
-        dictTotalCountEl.innerText = totalDict;
-        masteredCountEl.innerText = masteredCount;
-        remainingCountEl.innerText = remainingCount;
+        // 2. 本组统计
+        const gSizeVal = groupSizeSelect.value;
+        let totalGroups = 1;
 
-        correctCountEl.innerText = stats.correct;
-        wrongCountEl.innerText = stats.wrong;
-        totalCountEl.innerText = stats.total;
+        if (gSizeVal !== 'all') {
+            const gSize = parseInt(gSizeVal, 10);
+            totalGroups = Math.max(1, Math.ceil(dictTotal / gSize));
+        }
 
-        updateWrongBadge();
+        groupInfoText.innerText = `第 ${currentGroupIndex + 1} / ${totalGroups} 组`;
+
+        const groupTotal = currentGroupList.length;
+        let groupMastered = 0;
+
+        currentGroupList.forEach(item => {
+            const key = item.headWord || item.word;
+            if ((wordStatsMap[key] || 0) >= 3) groupMastered++;
+        });
+
+        groupTotalCountEl.innerText = groupTotal;
+        groupMasteredCountEl.innerText = groupMastered;
+        groupRemainingCountEl.innerText = Math.max(0, groupTotal - groupMastered);
+    }
+
+    function getChineseTrans(wordObj) {
+        if (!wordObj) return "暂无释义";
+
+        if (wordObj.trans && Array.isArray(wordObj.trans) && wordObj.trans.length > 0) {
+            return wordObj.trans.map(t => `${t.pos || t.p || ''} ${t.tranCn || t.cn || t.translation || ''}`.trim()).filter(Boolean).join('；');
+        }
+
+        if (wordObj.translations && Array.isArray(wordObj.translations) && wordObj.translations.length > 0) {
+            return wordObj.translations.map(t => `${t.type || t.pos || ''} ${t.translation || t.tranCn || ''}`.trim()).filter(Boolean).join('；');
+        }
+
+        const nestedTrans = wordObj.content?.word?.content?.trans;
+        if (nestedTrans && Array.isArray(nestedTrans) && nestedTrans.length > 0) {
+            return nestedTrans.map(t => `${t.pos || ''} ${t.tranCn || t.cn || ''}`.trim()).filter(Boolean).join('；');
+        }
+
+        if (typeof wordObj.translation === 'string' && wordObj.translation) return wordObj.translation;
+        if (typeof wordObj.tranCn === 'string' && wordObj.tranCn) return wordObj.tranCn;
+        if (typeof wordObj.cn === 'string' && wordObj.cn) return wordObj.cn;
+
+        return "暂无释义";
+    }
+
+    function speakWord() {
+        if (!currentWordObj) return;
+        const text = currentWordObj.headWord || currentWordObj.word;
+        if (!text) return;
+
+        window.speechSynthesis.cancel();
+        const repeatCount = parseInt(repeatSelect.value, 10) || 1;
+
+        for (let i = 0; i < repeatCount; i++) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
     }
 
     function resetOptionStyles() {
-        optionBtns.forEach(btn => btn.classList.remove('correct', 'wrong'));
+        optionBtns.forEach(btn => {
+            btn.classList.remove('correct', 'wrong');
+            btn.disabled = false;
+        });
     }
 
     function disableOptions(disabled) {
@@ -1257,20 +1279,70 @@
     }
 
     function handleModeChange() {
-        const mode = modeSelect.value;
-        const isAutoOrFast = mode === 'auto' || mode === 'fast';
-        intervalSelect.disabled = !isAutoOrFast;
-        
-        nextBtn.style.display = isAutoOrFast ? 'none' : 'block';
-        pauseBtn.style.display = isAutoOrFast ? 'block' : 'none';
-
-        nextWord();
+        intervalSelect.disabled = (modeSelect.value === 'manual');
+        if (modeSelect.value === 'fast') {
+            pauseBtn.style.display = 'inline-block';
+            nextBtn.style.width = '48%';
+            pauseBtn.style.width = '48%';
+        } else {
+            pauseBtn.style.display = 'none';
+            nextBtn.style.width = '100%';
+        }
     }
 
-    initTheme();
-    loadSavedWrongWords();
-    fetchFileList();
-</script>
+    function togglePause() {
+        isPaused = !isPaused;
+        pauseBtn.innerText = isPaused ? "继续" : "暂停";
+        if (!isPaused && !answered) {
+            nextWord();
+        }
+    }
 
+    function shuffleArray(array) {
+        const arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function showWordDetail() {
+        if (!currentWordObj) return;
+        const word = currentWordObj.headWord || currentWordObj.word;
+        detailWordTitle.innerText = word;
+
+        let html = '';
+
+        const usphone = currentWordObj.content?.word?.content?.phone || currentWordObj.usphone;
+        const ukphone = currentWordObj.ukphone;
+
+        if (usphone || ukphone) {
+            html += `<div class="detail-section">`;
+            if (usphone) html += `<span class="phonetic-tag">美 /${usphone}/</span>`;
+            if (ukphone) html += `<span class="phonetic-tag">英 /${ukphone}/</span>`;
+            html += `</div>`;
+        }
+
+        html += `<div class="detail-section"><div class="detail-title">详细释义：</div>`;
+        html += `<div>${getChineseTrans(currentWordObj)}</div>`;
+        html += `</div>`;
+
+        const sentences = currentWordObj.content?.word?.content?.sentence?.sentences;
+        if (sentences && Array.isArray(sentences) && sentences.length > 0) {
+            html += `<div class="detail-section"><div class="detail-title">经典例句：</div>`;
+            sentences.slice(0, 3).forEach(s => {
+                html += `<div class="example-item">
+                    <div class="example-en">${s.sContent}</div>
+                    <div class="example-cn">${s.sCn}</div>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+
+        detailModalBody.innerHTML = html;
+        detailModalOverlay.classList.add('active');
+    }
+</script>
 </body>
 </html>
