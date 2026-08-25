@@ -1171,7 +1171,6 @@
                 const totalGroups = Math.ceil(source.length / gSize);
 
                 if (currentGroupIndex + 1 < totalGroups) {
-                    alert(`🎉 恭喜！您已完美掌握第 ${currentGroupIndex + 1} 组的所有单词！\n即将为您自动开启第 ${currentGroupIndex + 2} 组。`);
                     currentGroupIndex++;
                     saveDictCache();
                     setupGroupData();
