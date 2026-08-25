@@ -269,6 +269,14 @@
             text-align: center;
         }
 
+        .clickable-title {
+            cursor: pointer;
+            color: var(--primary-color);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            user-select: none;
+        }
+
         .score-divider {
             height: 1px;
             background-color: var(--border-color);
@@ -454,8 +462,8 @@
 
     <!-- 统计看板 -->
     <div class="score-board">
-        <!-- 第一行：词库总体数据 -->
-        <div class="score-row-title">词库总体</div>
+        <!-- 第一行：词库总体数据 (支持点击手工设定已掌握数) -->
+        <div class="score-row-title clickable-title" id="dictTitleLabel">词库总体 (点击设定初始已掌握数)</div>
         <div class="score-row">
             <div class="score-item">总词条: <span id="dictTotalCount" class="score-total-dict">0</span></div>
             <div class="score-item">已掌握: <span id="masteredCount" class="score-mastered">0</span></div>
@@ -464,8 +472,8 @@
         
         <div class="score-divider"></div>
         
-        <!-- 第二行：当前分组数据 -->
-        <div class="score-row-title" id="groupTitleLabel">当前分组</div>
+        <!-- 第二行：当前分组数据 (支持点击切换) -->
+        <div class="score-row-title clickable-title" id="groupTitleLabel">当前分组</div>
         <div class="score-row">
             <div class="score-item">组词条: <span id="groupTotalCount" class="score-total-dict">0</span></div>
             <div class="score-item">组已掌握: <span id="groupMasteredCount" class="score-mastered">0</span></div>
@@ -705,6 +713,7 @@
     const nextBtn = document.getElementById('nextBtn');
     const pauseBtn = document.getElementById('pauseBtn');
 
+    const dictTitleLabel = document.getElementById('dictTitleLabel');
     const groupTitleLabel = document.getElementById('groupTitleLabel');
     const dictTotalCountEl = document.getElementById('dictTotalCount');
     const masteredCountEl = document.getElementById('masteredCount');
@@ -890,17 +899,90 @@
     wordCard.addEventListener('touchmove', cancelLongPress);
 
     fileSelect.addEventListener('change', () => {
-        isWrongMode = false;
-        updateAppTitle();
-        loadDictCache();
-        setupGroupData();
-        nextWord();
+        loadVocabulary();
     });
 
     groupSizeSelect.addEventListener('change', () => {
         currentGroupIndex = 0;
         loadDictCache();
         setupGroupData();
+        nextWord();
+    });
+
+    // 点击词库总体事件：手动设定初始已掌握单词数量
+    dictTitleLabel.addEventListener('click', () => {
+        if (isWrongMode) {
+            alert("错题本模式不支持批量设置已掌握数量。");
+            return;
+        }
+
+        if (!fullVocabulary || fullVocabulary.length === 0) return;
+
+        const totalWords = fullVocabulary.length;
+        let currentMastered = 0;
+        fullVocabulary.forEach(item => {
+            const key = item.headWord || item.word;
+            if ((wordStatsMap[key] || 0) >= 3) {
+                currentMastered++;
+            }
+        });
+
+        const inputVal = prompt(`当前词库共有 ${totalWords} 个单词（当前已掌握 ${currentMastered} 个）。\n请输入你想要直接设定的“已掌握”单词数量 (0 - ${totalWords}):`, currentMastered);
+
+        if (inputVal === null) return; 
+
+        const targetMastered = parseInt(inputVal, 10);
+
+        if (isNaN(targetMastered) || targetMastered < 0 || targetMastered > totalWords) {
+            alert(`请输入有效的数量 (0 到 ${totalWords} 之间的数字)！`);
+            return;
+        }
+
+        // 将前 targetMastered 个词标为已掌握(设置为3次正确)，其余单词重置为0
+        fullVocabulary.forEach((item, index) => {
+            const key = item.headWord || item.word;
+            if (index < targetMastered) {
+                wordStatsMap[key] = 3;
+            } else {
+                wordStatsMap[key] = 0;
+            }
+        });
+
+        saveDictCache();
+        setupGroupData();
+        sequenceIndex = 0;
+        nextWord();
+    });
+
+    // 点击当前分组事件：手工跳转分组
+    groupTitleLabel.addEventListener('click', () => {
+        const gSizeVal = groupSizeSelect.value;
+        if (gSizeVal === 'all') {
+            alert("当前处于‘不分组’模式，无法切换分组序号。请先在【设置】中选择具体的每组单词数量。");
+            return;
+        }
+
+        const source = isWrongMode ? getActiveWrongList() : fullVocabulary;
+        if (!source || source.length === 0) return;
+
+        const gSize = parseInt(gSizeVal, 10);
+        const totalGroups = Math.max(1, Math.ceil(source.length / gSize));
+
+        const inputVal = prompt(`当前共有 ${totalGroups} 组（每组 ${gSize} 个词）。\n请输入你想跳转练习的组序号 (1 - ${totalGroups}):`, currentGroupIndex + 1);
+
+        if (inputVal === null) return; 
+
+        const targetGroup = parseInt(inputVal, 10);
+
+        if (isNaN(targetGroup) || targetGroup < 1 || targetGroup > totalGroups) {
+            alert(`请输入有效的组序号 (1 到 ${totalGroups} 之间的数字)！`);
+            return;
+        }
+
+        currentGroupIndex = targetGroup - 1;
+        saveDictCache();
+        setupGroupData();
+        sequenceIndex = 0;
         nextWord();
     });
 
@@ -1024,6 +1106,9 @@
     async function loadVocabulary() {
         const fileName = fileSelect.value;
         if (!fileName) return;
+
+        isWrongMode = false;
+        updateAppTitle();
 
         wordText.innerText = "加载中...";
         disableOptions(true);
@@ -1407,7 +1492,7 @@
         } else {
             const gSize = parseInt(gSizeVal, 10);
             const totalGroups = Math.max(1, Math.ceil(totalDict / gSize));
-            groupTitleLabel.innerText = `当前分组 (第 ${currentGroupIndex + 1}/${totalGroups} 组)`;
+            groupTitleLabel.innerText = `当前分组 (第 ${currentGroupIndex + 1}/${totalGroups} 组，点击切换)`;
             
             groupTotal = currentGroupList.length;
             currentGroupList.forEach(item => {
