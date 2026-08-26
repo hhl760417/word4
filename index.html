@@ -585,6 +585,16 @@
         </div>
 
         <div class="controls">
+            <!-- 新增：掌握阈值选择 -->
+            <div class="control-group">
+                <label for="masteryThresholdSelect">判定已掌握所需的答对次数：</label>
+                <select id="masteryThresholdSelect">
+                    <option value="1">1 次</option>
+                    <option value="2">2 次</option>
+                    <option value="3" selected>3 次 (默认)</option>
+                </select>
+            </div>
+
             <!-- 竞赛模式设置 -->
             <div class="control-group">
                 <label for="competitionModeSelect">竞赛方式：</label>
@@ -746,6 +756,7 @@
     
     let wordStatsMap = {}; 
     let isWrongMode = false;
+    let masteryThreshold = 3; // 判定已掌握所需答对的次数，默认3次
 
     let currentGroupIndex = 0; 
     let studyMode = 'en2cn'; 
@@ -766,7 +777,7 @@
     let competitionTimer = null;
     let competitionTimeLeft = 180; // 3分钟=180秒
     let competitionStats = { correct: 0, wrong: 0, total: 0, score: 0, accuracy: "0%" };
-    let competitionPool = []; // 竞赛模式下的抽题池（保证单词不重复出现）
+    let competitionPool = []; 
 
     const modalOverlay = document.getElementById('modalOverlay');
     const openModalBtn = document.getElementById('openModalBtn');
@@ -784,6 +795,7 @@
     const closeHistoryBtn = document.getElementById('closeHistoryBtn');
     const historyModalBody = document.getElementById('historyModalBody');
 
+    const masteryThresholdSelect = document.getElementById('masteryThresholdSelect');
     const themeSelect = document.getElementById('themeSelect');
     const fileSelect = document.getElementById('fileSelect');
     const groupSizeSelect = document.getElementById('groupSizeSelect');
@@ -837,6 +849,22 @@
     const compTotalCount = document.getElementById('compTotalCount');
     const compAccuracy = document.getElementById('compAccuracy');
     const compScore = document.getElementById('compScore');
+
+    function initMasteryThreshold() {
+        const savedThreshold = localStorage.getItem('app_mastery_threshold') || '3';
+        masteryThreshold = parseInt(savedThreshold, 10);
+        masteryThresholdSelect.value = savedThreshold;
+    }
+
+    masteryThresholdSelect.addEventListener('change', (e) => {
+        masteryThreshold = parseInt(e.target.value, 10);
+        localStorage.setItem('app_mastery_threshold', masteryThreshold);
+        filterGroupVocabulary();
+        updateStatsUI();
+        if (!isCompetitionMode) {
+            nextWord();
+        }
+    });
 
     function initTheme() {
         const savedTheme = localStorage.getItem('app_theme') || 'light';
@@ -963,6 +991,7 @@
             currentGroupIndex = 0;
             initTheme();
             initFontSize();
+            initMasteryThreshold();
             updateWrongBadge();
             alert("本地缓存已完全清空！");
             modalOverlay.classList.remove('active');
@@ -1012,7 +1041,6 @@
             return;
         }
 
-        // 按时间倒序展示
         historyData.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         let html = '';
@@ -1097,7 +1125,7 @@
         let currentMastered = 0;
         fullVocabulary.forEach(item => {
             const key = item.headWord || item.word;
-            if ((wordStatsMap[key] || 0) >= 3) {
+            if ((wordStatsMap[key] || 0) >= masteryThreshold) {
                 currentMastered++;
             }
         });
@@ -1116,7 +1144,7 @@
         fullVocabulary.forEach((item, index) => {
             const key = item.headWord || item.word;
             if (index < targetMastered) {
-                wordStatsMap[key] = 3;
+                wordStatsMap[key] = masteryThreshold;
             } else {
                 wordStatsMap[key] = 0;
             }
@@ -1175,7 +1203,7 @@
         if (compVal === 'en2cn' || compVal === 'cn2en') {
             isCompetitionMode = true;
             studyMode = compVal;
-            // 锁定竞赛UI参数
+
             document.getElementById('groupSizeGroup').style.display = 'none';
             document.getElementById('studyModeGroup').style.display = 'none';
             document.getElementById('wrongNotebookGroup').style.display = 'none';
@@ -1250,7 +1278,6 @@
         competitionActive = true;
         competitionTimeLeft = 180;
         competitionStats = { correct: 0, wrong: 0, total: 0, score: 0, accuracy: "0%" };
-        // 复制一份随机的无重复抽题池
         competitionPool = [...fullVocabulary].sort(() => Math.random() - 0.5);
 
         startCompBtn.disabled = true;
@@ -1304,7 +1331,6 @@
     }
 
     function updateCompetitionScoreUI() {
-        // 计算正确率
         if (competitionStats.total > 0) {
             const accVal = (competitionStats.correct / competitionStats.total) * 100;
             competitionStats.accuracy = accVal.toFixed(1) + "%";
@@ -1476,15 +1502,15 @@
         filterGroupVocabulary();
     }
 
+    // 修改处：使用动态的 masteryThreshold 替代原本硬编码的 3
     function filterGroupVocabulary() {
         vocabulary = currentGroupList.filter(item => {
             const key = item.headWord || item.word;
-            return (wordStatsMap[key] || 0) < 3;
+            return (wordStatsMap[key] || 0) < masteryThreshold;
         });
     }
 
     function nextWord() {
-        // 竞赛模式下抽题逻辑
         if (isCompetitionMode) {
             if (!competitionActive) return;
 
@@ -1498,7 +1524,7 @@
             resetOptionStyles();
             disableOptions(false);
 
-            currentWordObj = competitionPool.pop(); // 只出现一次（从池中弹出一个词）
+            currentWordObj = competitionPool.pop(); 
 
             if (studyMode === 'en2cn') {
                 wordText.innerText = currentWordObj.headWord || currentWordObj.word || "Unknown";
@@ -1530,7 +1556,6 @@
             return;
         }
 
-        // 常规学习模式抽题逻辑
         if (!vocabulary || vocabulary.length === 0) {
             const source = isWrongMode ? getActiveWrongList() : fullVocabulary;
             const gSizeVal = groupSizeSelect.value;
@@ -1747,20 +1772,19 @@
             if (selectedIndex === correctIndex) {
                 optionBtns[selectedIndex].classList.add('correct');
                 competitionStats.correct++;
-                competitionStats.score += 1; // 答对加1分
+                competitionStats.score += 1; 
             } else {
                 if (selectedIndex >= 0) {
                     optionBtns[selectedIndex].classList.add('wrong');
                 }
                 optionBtns[correctIndex].classList.add('correct');
                 competitionStats.wrong++;
-                competitionStats.score -= 1; // 答错扣1分
+                competitionStats.score -= 1; 
             }
 
             updateCompetitionScoreUI();
             disableOptions(true);
 
-            // 竞赛模式下静默间隔0.6秒后自动进入下一题
             setTimeout(() => {
                 if (competitionActive) nextWord();
             }, 600);
@@ -1780,7 +1804,8 @@
             
             wordStatsMap[wordKey] = (wordStatsMap[wordKey] || 0) + 1;
 
-            if (wordStatsMap[wordKey] >= 3) {
+            // 修改处：使用动态的 masteryThreshold 替代原本硬编码的 3
+            if (wordStatsMap[wordKey] >= masteryThreshold) {
                 if (isWrongMode) {
                     removeWordFromWrongList(wordKey);
                 }
@@ -1864,6 +1889,7 @@
         speak();
     }
 
+    // 修改处：统计更新中将原本的 >= 3 判定统一替换为 >= masteryThreshold
     function updateStatsUI() {
         if (isCompetitionMode) return;
 
@@ -1875,7 +1901,7 @@
         let dictMasteredCount = 0;
         fullSource.forEach(item => {
             const key = item.headWord || item.word;
-            if ((wordStatsMap[key] || 0) >= 3) {
+            if ((wordStatsMap[key] || 0) >= masteryThreshold) {
                 dictMasteredCount++;
             }
         });
@@ -1900,7 +1926,7 @@
             groupTotal = currentGroupList.length;
             currentGroupList.forEach(item => {
                 const key = item.headWord || item.word;
-                if ((wordStatsMap[key] || 0) >= 3) {
+                if ((wordStatsMap[key] || 0) >= masteryThreshold) {
                     groupMastered++;
                 }
             });
@@ -1944,6 +1970,7 @@
         nextWord();
     }
 
+    initMasteryThreshold();
     initTheme();
     initFontSize();
     loadSavedWrongWords();
