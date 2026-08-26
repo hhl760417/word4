@@ -291,6 +291,17 @@
         .score-wrong { color: var(--error-color); }
         .score-total { color: var(--primary-color); }
 
+        /* 竞赛倒计时提醒 */
+        .timer-display {
+            text-align: center;
+            font-size: 14px;
+            color: var(--error-color);
+            font-weight: bold;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
         .card {
             border: 2px solid var(--border-color);
             border-radius: 12px;
@@ -372,6 +383,8 @@
 
         .bottom-btn-container {
             display: flex;
+            flex-direction: column;
+            gap: 10px;
             justify-content: center;
             width: 100%;
         }
@@ -390,9 +403,23 @@
 
         .next-btn { background-color: var(--primary-color); }
         .pause-btn { background-color: var(--warning-color); box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3); }
+        .start-btn { background-color: #9b59b6; box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3); }
+        
+        .history-btn {
+            background-color: var(--option-bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+
         .modal-footer { margin-top: 12px; text-align: right; }
 
-        .word-detail-body {
+        .word-detail-body, .history-list-body {
             overflow-y: auto;
             font-size: 13px;
             color: var(--text-color);
@@ -450,6 +477,33 @@
 
         .example-en, .phrase-en { font-weight: 500; color: var(--text-color); }
         .example-cn, .phrase-cn { color: var(--text-secondary); margin-top: 2px; }
+
+        /* 历史成绩表格/列表 */
+        .history-card {
+            background: var(--score-bg);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .history-score-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -460,9 +514,8 @@
         <button class="settings-btn" id="openModalBtn">⚙️ 设置</button>
     </div>
 
-    <!-- 统计看板 -->
-    <div class="score-board">
-        <!-- 第一行：词库总体数据 (支持点击手工设定已掌握数) -->
+    <!-- 常规学习模式统计看板 -->
+    <div class="score-board" id="normalScoreBoard">
         <div class="score-row-title clickable-title" id="dictTitleLabel">词库总体 (点击设定初始已掌握数)</div>
         <div class="score-row">
             <div class="score-item">总词条: <span id="dictTotalCount" class="score-total-dict">0</span></div>
@@ -472,7 +525,6 @@
         
         <div class="score-divider"></div>
         
-        <!-- 第二行：当前分组数据 (支持点击切换) -->
         <div class="score-row-title clickable-title" id="groupTitleLabel">当前分组</div>
         <div class="score-row">
             <div class="score-item">组词条: <span id="groupTotalCount" class="score-total-dict">0</span></div>
@@ -482,7 +534,6 @@
 
         <div class="score-divider"></div>
 
-        <!-- 第三行：当前答题情况 -->
         <div class="score-row">
             <div class="score-item">正确: <span id="correctCount" class="score-correct">0</span></div>
             <div class="score-item">错误: <span id="wrongCount" class="score-wrong">0</span></div>
@@ -490,8 +541,21 @@
         </div>
     </div>
 
+    <!-- 竞赛模式顶部统计看板 -->
+    <div class="score-board" id="competitionScoreBoard" style="display: none;">
+        <div class="score-row-title">当前竞赛词库：<span id="compDictName" style="color:var(--primary-color)">-</span></div>
+        <div class="timer-display" id="timerDisplay">倒计时 03:00</div>
+        <div class="score-divider"></div>
+        <div class="score-row">
+            <div class="score-item">答对数量: <span id="compCorrectCount" class="score-correct">0</span></div>
+            <div class="score-item">答错数量: <span id="compWrongCount" class="score-wrong">0</span></div>
+            <div class="score-item">总数量: <span id="compTotalCount" class="score-total">0</span></div>
+            <div class="score-item">总成绩: <span id="compScore" style="color:#8e44ad; font-size: 14px;">0</span></div>
+        </div>
+    </div>
+
     <div class="card" id="wordCard">
-        <div id="wordText" class="word-text">正在加载...</div>
+        <div id="wordText" class="word-text">点击开始答题</div>
         <button id="speakBtn" class="speak-btn" title="朗读">🔊</button>
         <span class="long-press-tip">长按查看详细解析</span>
     </div>
@@ -504,8 +568,10 @@
     </div>
 
     <div class="bottom-btn-container">
+        <button id="startCompBtn" class="action-btn start-btn" onclick="startCompetition()" style="display: none;">🚀 开始竞赛 (3分钟)</button>
         <button id="nextBtn" class="action-btn next-btn" onclick="nextWord()" style="display: none;">下一题</button>
         <button id="pauseBtn" class="action-btn pause-btn" onclick="togglePause()">暂停</button>
+        <button id="viewHistoryBtn" class="history-btn" onclick="openHistoryModal()">📊 查看历史竞赛成绩</button>
     </div>
 </div>
 
@@ -518,6 +584,16 @@
         </div>
 
         <div class="controls">
+            <!-- 竞赛模式设置 -->
+            <div class="control-group">
+                <label for="competitionModeSelect">竞赛方式：</label>
+                <select id="competitionModeSelect">
+                    <option value="off" selected>关闭 (常规学习模式)</option>
+                    <option value="en2cn">🏆 竞赛模式 (英译中)</option>
+                    <option value="cn2en">🏆 竞赛模式 (中译英)</option>
+                </select>
+            </div>
+
             <!-- 主题切换设置 -->
             <div class="control-group">
                 <label for="themeSelect">主题模式：</label>
@@ -534,8 +610,7 @@
                 </select>
             </div>
 
-            <!-- 分组设置 -->
-            <div class="control-group">
+            <div class="control-group" id="groupSizeGroup">
                 <label for="groupSizeSelect">每组单词数量：</label>
                 <select id="groupSizeSelect">
                     <option value="10">每组 10 个</option>
@@ -545,8 +620,7 @@
                 </select>
             </div>
 
-            <!-- 学习方式设置 -->
-            <div class="control-group">
+            <div class="control-group" id="studyModeGroup">
                 <label for="studyModeSelect">学习方式：</label>
                 <select id="studyModeSelect">
                     <option value="en2cn" selected>英译中（看着英文选中文）</option>
@@ -554,8 +628,7 @@
                 </select>
             </div>
 
-            <!-- 英译中错题本管理 -->
-            <div class="control-group">
+            <div class="control-group" id="wrongNotebookGroup">
                 <label>英译中错题本：</label>
                 <div class="btn-group">
                     <button id="loadWrongEn2CnBtn" class="btn-wrong-notebook">📖 练习英译中错题 (<span id="wrongCountEn2CnBadge">0</span>)</button>
@@ -563,8 +636,7 @@
                 </div>
             </div>
 
-            <!-- 中译英错题本管理 -->
-            <div class="control-group">
+            <div class="control-group" id="wrongNotebookCnGroup">
                 <label>中译英错题本：</label>
                 <div class="btn-group">
                     <button id="loadWrongCn2EnBtn" class="btn-wrong-notebook">📖 练习中译英错题 (<span id="wrongCountCn2EnBadge">0</span>)</button>
@@ -572,7 +644,7 @@
                 </div>
             </div>
 
-            <div class="control-group">
+            <div class="control-group" id="orderSelectGroup">
                 <label for="orderSelect">单词显示顺序：</label>
                 <select id="orderSelect">
                     <option value="random">随机显示</option>
@@ -580,7 +652,6 @@
                 </select>
             </div>
 
-            <!-- 选项文字字号设置 -->
             <div class="control-group">
                 <label for="fontSizeSelect">选项文字字号：</label>
                 <select id="fontSizeSelect">
@@ -601,7 +672,7 @@
                 </select>
             </div>
 
-            <div class="control-group">
+            <div class="control-group" id="modeSelectGroup">
                 <label for="modeSelect">切换模式：</label>
                 <select id="modeSelect">
                     <option value="manual">手动切换</option>
@@ -610,7 +681,7 @@
                 </select>
             </div>
 
-            <div class="control-group">
+            <div class="control-group" id="intervalSelectGroup">
                 <label for="intervalSelect">朗读后间隔时间：</label>
                 <select id="intervalSelect">
                     <option value="1000" selected>1 秒</option>
@@ -619,7 +690,6 @@
                 </select>
             </div>
 
-            <!-- 清除缓存 -->
             <div class="control-group" style="margin-top: 6px;">
                 <label>系统数据管理：</label>
                 <button id="clearCacheBtn" class="btn-clear-cache">🗑️ 清除所有本地缓存</button>
@@ -639,11 +709,25 @@
             <h2 id="detailWordTitle">单词详解</h2>
             <button class="close-btn" id="closeDetailModalBtn">✕</button>
         </div>
-
         <div class="word-detail-body" id="detailModalBody"></div>
-
         <div class="modal-footer">
             <button class="action-btn next-btn" id="closeDetailBtn" style="height: 40px; border-radius: 8px;">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 历史成绩弹出窗口 -->
+<div class="modal-overlay" id="historyModalOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>🏆 竞赛历史测试成绩</h2>
+            <button class="close-btn" id="closeHistoryModalBtn">✕</button>
+        </div>
+        <div class="history-list-body" id="historyModalBody">
+            <div style="text-align:center; padding: 20px; color: var(--text-secondary);">暂无竞赛历史记录</div>
+        </div>
+        <div class="modal-footer">
+            <button class="action-btn next-btn" id="closeHistoryBtn" style="height: 40px; border-radius: 8px;">关闭</button>
         </div>
     </div>
 </div>
@@ -675,6 +759,14 @@
 
     let stats = { correct: 0, wrong: 0, total: 0 };
 
+    /* 竞赛模式独有状态变量 */
+    let isCompetitionMode = false; 
+    let competitionActive = false; 
+    let competitionTimer = null;
+    let competitionTimeLeft = 180; // 3分钟=180秒
+    let competitionStats = { correct: 0, wrong: 0, total: 0, score: 0 };
+    let competitionPool = []; // 竞赛模式下的抽题池（保证单词不重复出现）
+
     const modalOverlay = document.getElementById('modalOverlay');
     const openModalBtn = document.getElementById('openModalBtn');
     const closeModalBtn = document.getElementById('closeModalBtn');
@@ -686,6 +778,11 @@
     const detailWordTitle = document.getElementById('detailWordTitle');
     const detailModalBody = document.getElementById('detailModalBody');
 
+    const historyModalOverlay = document.getElementById('historyModalOverlay');
+    const closeHistoryModalBtn = document.getElementById('closeHistoryModalBtn');
+    const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+    const historyModalBody = document.getElementById('historyModalBody');
+
     const themeSelect = document.getElementById('themeSelect');
     const fileSelect = document.getElementById('fileSelect');
     const groupSizeSelect = document.getElementById('groupSizeSelect');
@@ -695,6 +792,7 @@
     const repeatSelect = document.getElementById('repeatSelect');
     const modeSelect = document.getElementById('modeSelect');
     const intervalSelect = document.getElementById('intervalSelect');
+    const competitionModeSelect = document.getElementById('competitionModeSelect');
     
     const loadWrongEn2CnBtn = document.getElementById('loadWrongEn2CnBtn');
     const clearWrongEn2CnBtn = document.getElementById('clearWrongEn2CnBtn');
@@ -712,6 +810,7 @@
     const optionBtns = document.querySelectorAll('.option-btn');
     const nextBtn = document.getElementById('nextBtn');
     const pauseBtn = document.getElementById('pauseBtn');
+    const startCompBtn = document.getElementById('startCompBtn');
 
     const dictTitleLabel = document.getElementById('dictTitleLabel');
     const groupTitleLabel = document.getElementById('groupTitleLabel');
@@ -726,6 +825,16 @@
     const correctCountEl = document.getElementById('correctCount');
     const wrongCountEl = document.getElementById('wrongCount');
     const totalCountEl = document.getElementById('totalCount');
+
+    /* 竞赛界面元素 */
+    const normalScoreBoard = document.getElementById('normalScoreBoard');
+    const competitionScoreBoard = document.getElementById('competitionScoreBoard');
+    const compDictName = document.getElementById('compDictName');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const compCorrectCount = document.getElementById('compCorrectCount');
+    const compWrongCount = document.getElementById('compWrongCount');
+    const compTotalCount = document.getElementById('compTotalCount');
+    const compScore = document.getElementById('compScore');
 
     function initTheme() {
         const savedTheme = localStorage.getItem('app_theme') || 'light';
@@ -843,7 +952,7 @@
     }
 
     clearCacheBtn.addEventListener('click', () => {
-        if (confirm("确定要清除手机上的所有缓存数据吗？（包含练习进度、两套错题本及主题设置）")) {
+        if (confirm("确定要清除手机上的所有缓存数据吗？（包含练习进度、错题本、历史竞赛成绩及主题设置）")) {
             localStorage.clear();
             wordStatsMap = {};
             wrongWordsEn2Cn = [];
@@ -864,9 +973,15 @@
         modalOverlay.classList.add('active');
     });
     closeModalBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
-    saveModalBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
+    saveModalBtn.addEventListener('click', () => {
+        modalOverlay.classList.remove('active');
+        applyCompetitionModeSetting();
+    });
     modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+        if (e.target === modalOverlay) {
+            modalOverlay.classList.remove('active');
+            applyCompetitionModeSetting();
+        }
     });
 
     const closeDetailModal = () => detailModalOverlay.classList.remove('active');
@@ -875,6 +990,62 @@
     detailModalOverlay.addEventListener('click', (e) => {
         if (e.target === detailModalOverlay) closeDetailModal();
     });
+
+    /* 历史成绩弹窗操作 */
+    function openHistoryModal() {
+        renderHistoryList();
+        historyModalOverlay.classList.add('active');
+    }
+    const closeHistoryModal = () => historyModalOverlay.classList.remove('active');
+    closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
+    closeHistoryBtn.addEventListener('click', closeHistoryModal);
+    historyModalOverlay.addEventListener('click', (e) => {
+        if (e.target === historyModalOverlay) closeHistoryModal();
+    });
+
+    function renderHistoryList() {
+        const historyData = JSON.parse(localStorage.getItem('vocab_competition_history') || '[]');
+        if (historyData.length === 0) {
+            historyModalBody.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-secondary);">暂无竞赛历史记录</div>`;
+            return;
+        }
+
+        // 按时间倒序展示
+        historyData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let html = '';
+        historyData.forEach(item => {
+            const modeText = item.mode === 'en2cn' ? '英译中' : '中译英';
+            html += `
+            <div class="history-card">
+                <div class="history-header">
+                    <span>📚 ${item.fileName} (${modeText})</span>
+                    <span>🕒 ${item.date}</span>
+                </div>
+                <div class="history-score-row">
+                    <span>答对: <b style="color:var(--success-color)">${item.correct}</b> | 答错: <b style="color:var(--error-color)">${item.wrong}</b> | 总词: ${item.total}</span>
+                    <span style="color:#8e44ad">得分: ${item.score}分</span>
+                </div>
+            </div>`;
+        });
+
+        historyModalBody.innerHTML = html;
+    }
+
+    function saveCompetitionResult() {
+        const historyData = JSON.parse(localStorage.getItem('vocab_competition_history') || '[]');
+        const record = {
+            fileName: fileSelect.value || '未知词库',
+            mode: studyMode,
+            date: new Date().toLocaleString(),
+            correct: competitionStats.correct,
+            wrong: competitionStats.wrong,
+            total: competitionStats.total,
+            score: competitionStats.score
+        };
+        historyData.push(record);
+        localStorage.setItem('vocab_competition_history', JSON.stringify(historyData));
+    }
 
     function startLongPress(e) {
         if (e.target === speakBtn) return;
@@ -909,10 +1080,9 @@
         nextWord();
     });
 
-    // 点击词库总体事件：手动设定初始已掌握单词数量
     dictTitleLabel.addEventListener('click', () => {
-        if (isWrongMode) {
-            alert("错题本模式不支持批量设置已掌握数量。");
+        if (isWrongMode || isCompetitionMode) {
+            alert("错题本模式和竞赛模式不支持批量设置已掌握数量。");
             return;
         }
 
@@ -938,7 +1108,6 @@
             return;
         }
 
-        // 将前 targetMastered 个词标为已掌握(设置为3次正确)，其余单词重置为0
         fullVocabulary.forEach((item, index) => {
             const key = item.headWord || item.word;
             if (index < targetMastered) {
@@ -954,8 +1123,9 @@
         nextWord();
     });
 
-    // 点击当前分组事件：手工跳转分组
     groupTitleLabel.addEventListener('click', () => {
+        if (isCompetitionMode) return;
+
         const gSizeVal = groupSizeSelect.value;
         if (gSizeVal === 'all') {
             alert("当前处于‘不分组’模式，无法切换分组序号。请先在【设置】中选择具体的每组单词数量。");
@@ -995,9 +1165,150 @@
         nextWord();
     });
 
+    function applyCompetitionModeSetting() {
+        const compVal = competitionModeSelect.value;
+        if (compVal === 'en2cn' || compVal === 'cn2en') {
+            isCompetitionMode = true;
+            studyMode = compVal;
+            // 锁定竞赛UI参数
+            document.getElementById('groupSizeGroup').style.display = 'none';
+            document.getElementById('studyModeGroup').style.display = 'none';
+            document.getElementById('wrongNotebookGroup').style.display = 'none';
+            document.getElementById('wrongNotebookCnGroup').style.display = 'none';
+            document.getElementById('orderSelectGroup').style.display = 'none';
+            document.getElementById('modeSelectGroup').style.display = 'none';
+            document.getElementById('intervalSelectGroup').style.display = 'none';
+
+            normalScoreBoard.style.display = 'none';
+            competitionScoreBoard.style.display = 'flex';
+            
+            startCompBtn.style.display = 'block';
+            nextBtn.style.display = 'none';
+            pauseBtn.style.display = 'none';
+
+            resetCompetitionUI();
+        } else {
+            isCompetitionMode = false;
+            stopCompetitionTimer();
+            competitionActive = false;
+
+            document.getElementById('groupSizeGroup').style.display = 'flex';
+            document.getElementById('studyModeGroup').style.display = 'flex';
+            document.getElementById('wrongNotebookGroup').style.display = 'flex';
+            document.getElementById('wrongNotebookCnGroup').style.display = 'flex';
+            document.getElementById('orderSelectGroup').style.display = 'flex';
+            document.getElementById('modeSelectGroup').style.display = 'flex';
+            document.getElementById('intervalSelectGroup').style.display = 'flex';
+
+            normalScoreBoard.style.display = 'flex';
+            competitionScoreBoard.style.display = 'none';
+
+            startCompBtn.style.display = 'none';
+            handleModeChange();
+        }
+        updateAppTitle();
+        loadDictCache();
+        setupGroupData();
+        if (!isCompetitionMode) {
+            nextWord();
+        }
+    }
+
+    function resetCompetitionUI() {
+        stopCompetitionTimer();
+        competitionActive = false;
+        competitionTimeLeft = 180;
+        competitionStats = { correct: 0, wrong: 0, total: 0, score: 0 };
+        
+        compDictName.innerText = fileSelect.value || '-';
+        timerDisplay.innerText = "倒计时 03:00";
+        compCorrectCount.innerText = "0";
+        compWrongCount.innerText = "0";
+        compTotalCount.innerText = "0";
+        compScore.innerText = "0";
+
+        wordText.innerText = "点击下方按钮开始竞赛";
+        disableOptions(true);
+        resetOptionStyles();
+        optionBtns.forEach(btn => btn.innerText = "");
+        startCompBtn.disabled = false;
+        startCompBtn.innerText = "🚀 开始竞赛 (3分钟)";
+    }
+
+    function startCompetition() {
+        if (!fullVocabulary || fullVocabulary.length < 4) {
+            alert("词库加载中或词库单词库数量不足 4 个，无法开启竞赛！");
+            return;
+        }
+
+        competitionActive = true;
+        competitionTimeLeft = 180;
+        competitionStats = { correct: 0, wrong: 0, total: 0, score: 0 };
+        // 复制一份随机的无重复抽题池
+        competitionPool = [...fullVocabulary].sort(() => Math.random() - 0.5);
+
+        startCompBtn.disabled = true;
+        startCompBtn.innerText = "竞赛进行中...";
+
+        updateCompetitionScoreUI();
+        startCompetitionTimer();
+        nextWord();
+    }
+
+    function startCompetitionTimer() {
+        stopCompetitionTimer();
+        competitionTimer = setInterval(() => {
+            competitionTimeLeft--;
+            if (competitionTimeLeft <= 0) {
+                competitionTimeLeft = 0;
+                updateTimerDisplay();
+                endCompetition();
+            } else {
+                updateTimerDisplay();
+            }
+        }, 1000);
+    }
+
+    function stopCompetitionTimer() {
+        if (competitionTimer) {
+            clearInterval(competitionTimer);
+            competitionTimer = null;
+        }
+    }
+
+    function updateTimerDisplay() {
+        const m = Math.floor(competitionTimeLeft / 60).toString().padStart(2, '0');
+        const s = (competitionTimeLeft % 60).toString().padStart(2, '0');
+        timerDisplay.innerText = `倒计时 ${m}:${s}`;
+    }
+
+    function endCompetition() {
+        stopCompetitionTimer();
+        competitionActive = false;
+        disableOptions(true);
+        wordText.innerText = "⏱️ 时间到！竞赛结束";
+        startCompBtn.disabled = false;
+        startCompBtn.innerText = "🚀 重新开始竞赛";
+
+        saveCompetitionResult();
+
+        setTimeout(() => {
+            alert(`🏆 竞赛模式测试结算 🏆\n\n词库：${fileSelect.value}\n正确：${competitionStats.correct} 题\n错误：${competitionStats.wrong} 题\n答题总量：${competitionStats.total} 题\n最终成绩得分：${competitionStats.score} 分\n\n成绩已成功记录到本地！`);
+        }, 200);
+    }
+
+    function updateCompetitionScoreUI() {
+        compCorrectCount.innerText = competitionStats.correct;
+        compWrongCount.innerText = competitionStats.wrong;
+        compTotalCount.innerText = competitionStats.total;
+        compScore.innerText = competitionStats.score;
+    }
+
     function updateAppTitle() {
         const modeLabel = studyMode === 'en2cn' ? '英译中' : '中译英';
-        if (isWrongMode) {
+        if (isCompetitionMode) {
+            appTitle.innerText = `🏆 竞赛模式 (${modeLabel})`;
+        } else if (isWrongMode) {
             appTitle.innerText = `错题本 (${modeLabel})`;
         } else {
             appTitle.innerText = `快速背单词 (${modeLabel})`;
@@ -1012,13 +1323,9 @@
         studyMode = 'en2cn';
         studyModeSelect.value = 'en2cn';
         isWrongMode = true;
-        updateAppTitle();
-        loadDictCache();
-        setupGroupData();
-        sequenceIndex = 0;
-        updateStatsUI();
+        competitionModeSelect.value = 'off';
+        applyCompetitionModeSetting();
         modalOverlay.classList.remove('active');
-        nextWord();
     });
 
     clearWrongEn2CnBtn.addEventListener('click', () => {
@@ -1043,13 +1350,9 @@
         studyMode = 'cn2en';
         studyModeSelect.value = 'cn2en';
         isWrongMode = true;
-        updateAppTitle();
-        loadDictCache();
-        setupGroupData();
-        sequenceIndex = 0;
-        updateStatsUI();
+        competitionModeSelect.value = 'off';
+        applyCompetitionModeSetting();
         modalOverlay.classList.remove('active');
-        nextWord();
     });
 
     clearWrongCn2EnBtn.addEventListener('click', () => {
@@ -1124,8 +1427,12 @@
             
             sequenceIndex = 0;
             updateStatsUI();
-            
-            nextWord();
+
+            if (isCompetitionMode) {
+                resetCompetitionUI();
+            } else {
+                nextWord();
+            }
         } catch (error) {
             wordText.innerText = "加载失败";
         }
@@ -1135,7 +1442,7 @@
         const source = isWrongMode ? getActiveWrongList() : fullVocabulary;
         const gSizeVal = groupSizeSelect.value;
 
-        if (gSizeVal === 'all') {
+        if (gSizeVal === 'all' || isCompetitionMode) {
             currentGroupList = source;
             currentGroupIndex = 0;
         } else {
@@ -1162,6 +1469,53 @@
     }
 
     function nextWord() {
+        // 竞赛模式下抽题逻辑
+        if (isCompetitionMode) {
+            if (!competitionActive) return;
+
+            if (competitionPool.length === 0) {
+                alert("恭喜您，已回答完全部词库的题目！");
+                endCompetition();
+                return;
+            }
+
+            answered = false;
+            resetOptionStyles();
+            disableOptions(false);
+
+            currentWordObj = competitionPool.pop(); // 只出现一次（从池中弹出一个词）
+
+            if (studyMode === 'en2cn') {
+                wordText.innerText = currentWordObj.headWord || currentWordObj.word || "Unknown";
+                speakWord();
+            } else {
+                wordText.innerText = getChineseMeaning(currentWordObj);
+            }
+
+            const wrongOptions = [];
+            while (wrongOptions.length < 3) {
+                const rand = Math.floor(Math.random() * fullVocabulary.length);
+                const candidate = fullVocabulary[rand];
+                if (candidate !== currentWordObj && !wrongOptions.includes(candidate)) {
+                    wrongOptions.push(candidate);
+                }
+            }
+
+            correctIndex = Math.floor(Math.random() * 4);
+            let wrongOptIdx = 0;
+
+            optionBtns.forEach((btn, i) => {
+                let targetObj = (i === correctIndex) ? currentWordObj : wrongOptions[wrongOptIdx++];
+                if (studyMode === 'en2cn') {
+                    btn.innerText = getChineseMeaning(targetObj);
+                } else {
+                    btn.innerText = targetObj.headWord || targetObj.word || "Unknown";
+                }
+            });
+            return;
+        }
+
+        // 常规学习模式抽题逻辑
         if (!vocabulary || vocabulary.length === 0) {
             const source = isWrongMode ? getActiveWrongList() : fullVocabulary;
             const gSizeVal = groupSizeSelect.value;
@@ -1313,6 +1667,8 @@
     }
 
     function togglePause() {
+        if (isCompetitionMode) return;
+
         if (isPaused) {
             isPaused = false;
             pauseBtn.innerText = "暂停";
@@ -1366,6 +1722,37 @@
 
     function checkAnswer(selectedIndex) {
         if (answered || isPaused) return;
+
+        /* 竞赛模式下的答题处理 */
+        if (isCompetitionMode) {
+            if (!competitionActive) return;
+            answered = true;
+            competitionStats.total++;
+
+            if (selectedIndex === correctIndex) {
+                optionBtns[selectedIndex].classList.add('correct');
+                competitionStats.correct++;
+                competitionStats.score += 1; // 答对加1分
+            } else {
+                if (selectedIndex >= 0) {
+                    optionBtns[selectedIndex].classList.add('wrong');
+                }
+                optionBtns[correctIndex].classList.add('correct');
+                competitionStats.wrong++;
+                competitionStats.score -= 1; // 答错扣1分
+            }
+
+            updateCompetitionScoreUI();
+            disableOptions(true);
+
+            // 竞赛模式下静默间隔0.6秒后自动进入下一题
+            setTimeout(() => {
+                if (competitionActive) nextWord();
+            }, 600);
+            return;
+        }
+
+        /* 常规模式下的答题处理 */
         answered = true;
         clearTimeout(autoTimer);
 
@@ -1463,6 +1850,8 @@
     }
 
     function updateStatsUI() {
+        if (isCompetitionMode) return;
+
         const activeWrongList = getActiveWrongList();
         const fullSource = isWrongMode ? activeWrongList : fullVocabulary;
         const gSizeVal = groupSizeSelect.value;
@@ -1523,11 +1912,13 @@
     }
 
     function handleOrderChange() {
+        if (isCompetitionMode) return;
         sequenceIndex = 0;
         nextWord();
     }
 
     function handleModeChange() {
+        if (isCompetitionMode) return;
         const mode = modeSelect.value;
         const isAutoOrFast = mode === 'auto' || mode === 'fast';
         intervalSelect.disabled = false; 
