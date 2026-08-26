@@ -547,10 +547,11 @@
         <div class="timer-display" id="timerDisplay">倒计时 03:00</div>
         <div class="score-divider"></div>
         <div class="score-row">
-            <div class="score-item">答对数量: <span id="compCorrectCount" class="score-correct">0</span></div>
-            <div class="score-item">答错数量: <span id="compWrongCount" class="score-wrong">0</span></div>
-            <div class="score-item">总数量: <span id="compTotalCount" class="score-total">0</span></div>
-            <div class="score-item">总成绩: <span id="compScore" style="color:#8e44ad; font-size: 14px;">0</span></div>
+            <div class="score-item">答对: <span id="compCorrectCount" class="score-correct">0</span></div>
+            <div class="score-item">答错: <span id="compWrongCount" class="score-wrong">0</span></div>
+            <div class="score-item">总数: <span id="compTotalCount" class="score-total">0</span></div>
+            <div class="score-item">正确率: <span id="compAccuracy" style="color:#2980b9">0%</span></div>
+            <div class="score-item">成绩: <span id="compScore" style="color:#8e44ad; font-size: 13px;">0</span></div>
         </div>
     </div>
 
@@ -702,7 +703,7 @@
     </div>
 </div>
 
-<!-- 单词详情弹出窗口 -->
+<!-- 单词详解弹出窗口 -->
 <div class="modal-overlay" id="detailModalOverlay">
     <div class="modal">
         <div class="modal-header">
@@ -764,7 +765,7 @@
     let competitionActive = false; 
     let competitionTimer = null;
     let competitionTimeLeft = 180; // 3分钟=180秒
-    let competitionStats = { correct: 0, wrong: 0, total: 0, score: 0 };
+    let competitionStats = { correct: 0, wrong: 0, total: 0, score: 0, accuracy: "0%" };
     let competitionPool = []; // 竞赛模式下的抽题池（保证单词不重复出现）
 
     const modalOverlay = document.getElementById('modalOverlay');
@@ -834,6 +835,7 @@
     const compCorrectCount = document.getElementById('compCorrectCount');
     const compWrongCount = document.getElementById('compWrongCount');
     const compTotalCount = document.getElementById('compTotalCount');
+    const compAccuracy = document.getElementById('compAccuracy');
     const compScore = document.getElementById('compScore');
 
     function initTheme() {
@@ -1016,6 +1018,8 @@
         let html = '';
         historyData.forEach(item => {
             const modeText = item.mode === 'en2cn' ? '英译中' : '中译英';
+            const accText = item.accuracy || '0%';
+            const total = item.total !== undefined ? item.total : ((item.correct || 0) + (item.wrong || 0));
             html += `
             <div class="history-card">
                 <div class="history-header">
@@ -1023,7 +1027,7 @@
                     <span>🕒 ${item.date}</span>
                 </div>
                 <div class="history-score-row">
-                    <span>答对: <b style="color:var(--success-color)">${item.correct}</b> | 答错: <b style="color:var(--error-color)">${item.wrong}</b> | 总词: ${item.total}</span>
+                    <span>答对: <b style="color:var(--success-color)">${item.correct}</b> | 答错: <b style="color:var(--error-color)">${item.wrong}</b> | 总数: <b style="color:var(--primary-color)">${total}</b> | 正确率: <b style="color:#2980b9">${accText}</b></span>
                     <span style="color:#8e44ad">得分: ${item.score}分</span>
                 </div>
             </div>`;
@@ -1041,6 +1045,7 @@
             correct: competitionStats.correct,
             wrong: competitionStats.wrong,
             total: competitionStats.total,
+            accuracy: competitionStats.accuracy,
             score: competitionStats.score
         };
         historyData.push(record);
@@ -1218,13 +1223,14 @@
         stopCompetitionTimer();
         competitionActive = false;
         competitionTimeLeft = 180;
-        competitionStats = { correct: 0, wrong: 0, total: 0, score: 0 };
+        competitionStats = { correct: 0, wrong: 0, total: 0, score: 0, accuracy: "0%" };
         
         compDictName.innerText = fileSelect.value || '-';
         timerDisplay.innerText = "倒计时 03:00";
         compCorrectCount.innerText = "0";
         compWrongCount.innerText = "0";
         compTotalCount.innerText = "0";
+        compAccuracy.innerText = "0%";
         compScore.innerText = "0";
 
         wordText.innerText = "点击下方按钮开始竞赛";
@@ -1243,7 +1249,7 @@
 
         competitionActive = true;
         competitionTimeLeft = 180;
-        competitionStats = { correct: 0, wrong: 0, total: 0, score: 0 };
+        competitionStats = { correct: 0, wrong: 0, total: 0, score: 0, accuracy: "0%" };
         // 复制一份随机的无重复抽题池
         competitionPool = [...fullVocabulary].sort(() => Math.random() - 0.5);
 
@@ -1293,14 +1299,23 @@
         saveCompetitionResult();
 
         setTimeout(() => {
-            alert(`🏆 竞赛模式测试结算 🏆\n\n词库：${fileSelect.value}\n正确：${competitionStats.correct} 题\n错误：${competitionStats.wrong} 题\n答题总量：${competitionStats.total} 题\n最终成绩得分：${competitionStats.score} 分\n\n成绩已成功记录到本地！`);
+            alert(`🏆 竞赛模式测试结算 🏆\n\n词库：${fileSelect.value}\n正确：${competitionStats.correct} 题\n错误：${competitionStats.wrong} 题\n答题总量：${competitionStats.total} 题\n正确率：${competitionStats.accuracy}\n最终成绩得分：${competitionStats.score} 分\n\n成绩已成功记录到本地！`);
         }, 200);
     }
 
     function updateCompetitionScoreUI() {
+        // 计算正确率
+        if (competitionStats.total > 0) {
+            const accVal = (competitionStats.correct / competitionStats.total) * 100;
+            competitionStats.accuracy = accVal.toFixed(1) + "%";
+        } else {
+            competitionStats.accuracy = "0%";
+        }
+
         compCorrectCount.innerText = competitionStats.correct;
         compWrongCount.innerText = competitionStats.wrong;
         compTotalCount.innerText = competitionStats.total;
+        compAccuracy.innerText = competitionStats.accuracy;
         compScore.innerText = competitionStats.score;
     }
 
